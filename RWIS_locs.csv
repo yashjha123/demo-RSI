@@ -1,0 +1,4 @@
+﻿stid,station_name,lat,lon,elev,begints,iem_network
+RDSI4,Des Moines (I-35),41.5275,-93.7723,224,36577.51042,IA_RWIS
+RLEI4,Leon (I-35)/IA 2),40.73867,-93.8417,349,36577.50694,IA_RWIS
+ROSI4,Osceola (I-35),41.03,-93.79,334,36577.51319,IA_RWIS
