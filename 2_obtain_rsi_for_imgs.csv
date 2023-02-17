@@ -1,0 +1,21 @@
+OID,stid,station_na,lat,lon,elev,begints,pro_X,pro_Y,img_path,mask_path,estimate_ratio,RSC
+-1,RDAI4,Adair (I-80),41.49633,-94.7263,450,1994-12-30 0:00,355907,4595300,1_rwis_imgs_masks\IDOT-000-00_202001191407img.jpg,1_rwis_imgs_masks\IDOT-000-00_202001191407mask.jpg,0.5963,Bare
+-1,RAVI4,Avoca (I-80),41.49817,-95.2915,377,2000-02-21 0:00,308733,4596600,1_rwis_imgs_masks\IDOT-006-00_202001191458img.jpg,1_rwis_imgs_masks\IDOT-006-00_202001191458mask.jpg,0.5139,Partly Snow Coverage
+-1,RCFI4,Colfax - I-80,41.68904,-93.25977,240.31679,2007-01-29 0:00,478382,4615280,1_rwis_imgs_masks\IDOT-053-00_202001191408img.jpg,1_rwis_imgs_masks\IDOT-053-00_202001191408mask.jpg,0.6992,Partly Snow Coverage
+-1,RHAI4,Hanlontown (I-35),43.39217,-93.3498,333,2000-02-21 0:00,471670,4804430,1_rwis_imgs_masks\IDOT-049-00_202001191628img.jpg,1_rwis_imgs_masks\IDOT-049-00_202001191628mask.jpg,0.4708,Partly Snow Coverage
+-1,RLEI4,Leon (I-35)/IA 2),40.73867,-93.8417,349,2000-02-21 0:00,428933,4510090,1_rwis_imgs_masks\IDOT-026-00_202001191426img.jpg,1_rwis_imgs_masks\IDOT-026-00_202001191426mask.jpg,0.4438,Full Snow Coverage
+-1,RMCI4,Mason City (I-35),43.038,-93.3418,376,2000-02-21 0:00,472158,4765090,1_rwis_imgs_masks\IDOT-030-00_202001191458img.jpg,1_rwis_imgs_masks\IDOT-030-00_202001191458mask.jpg,0.4492,Partly Snow Coverage
+-1,RWBI4,Williamsburg (I-80),41.68767,-92.0087,260,2000-02-21 0:00,582498,4615570,1_rwis_imgs_masks\IDOT-048-00_202001191449img.jpg,1_rwis_imgs_masks\IDOT-048-00_202001191449mask.jpg,0.4225,Partly Snow Coverage
+-1,RWII4,Williams (I-35),42.58861,-93.53128,325,2000-02-21 0:00,456408,4715270,1_rwis_imgs_masks\IDOT-047-00_202001191428img.jpg,1_rwis_imgs_masks\IDOT-047-00_202001191428mask.jpg,0.4158,Partly Snow Coverage
+-1,RTOI4,Altoona (I-80/US 65),41.65967,-93.5222,262,2000-02-21 0:00,456523,4612120,1_rwis_imgs_masks\IDOT-026-02_202001191420img.jpg,1_rwis_imgs_masks\IDOT-026-02_202001191420mask.jpg,0.5572,Bare
+-1,RAMI4,Ames (I-35),42.03408,-93.56993,313,2000-02-21 0:00,452825,4653720,1_rwis_imgs_masks\IDOT-030-01_202001191419img.jpg,1_rwis_imgs_masks\IDOT-030-01_202001191419mask.jpg,0.3675,Partly Snow Coverage
+-1,RCMI4,Cambridge I-35,41.8632,-93.57107,294.26334,2015-03-09 0:00,452604,4634750,1_rwis_imgs_masks\IDOT-053-03_202001191445img.jpg,1_rwis_imgs_masks\IDOT-053-03_202001191445mask.jpg,0.8113,Bare
+-1,RCBI4,Council Bluffs (I-80),41.2325,-95.8662,268,2000-02-21 0:00,259784,4568530,1_rwis_imgs_masks\IDOT-053-02_202001191400img.jpg,1_rwis_imgs_masks\IDOT-053-02_202001191400mask.jpg,0.2497,Partly Snow Coverage
+-1,RCCI4,Council Bluffs No2,41.2605,-95.8031,314.0793,2014-02-07 0:00,265173,4571470,1_rwis_imgs_masks\IDOT-047-05_202001191506img.jpg,1_rwis_imgs_masks\IDOT-047-05_202001191506mask.jpg,0.3865,Partly Snow Coverage
+-1,RDVI4,Davenport (I-80/I-280),41.60233,-90.6777,206,2000-02-21 0:00,693527,4608230,1_rwis_imgs_masks\IDOT-000-02_202001191518img.jpg,1_rwis_imgs_masks\IDOT-000-02_202001191518mask.jpg,0.1075,Full Snow Coverage
+-1,RDSI4,Des Moines (I-35),41.5275,-93.7723,224,2000-02-21 0:00,435569,4597610,1_rwis_imgs_masks\IDOT-047-06_202001192209img.jpg,1_rwis_imgs_masks\IDOT-047-06_202001192209mask.jpg,0.5456,Bare
+-1,RDEI4,De Soto (I-80/US 169),41.5415,-94.0112,291,2000-02-21 0:00,415656,4599370,1_rwis_imgs_masks\IDOT-000-01_202001191457img.jpg,1_rwis_imgs_masks\IDOT-000-01_202001191457mask.jpg,0.0265,Partly Snow Coverage
+-1,RKNI4,Elkhart I-35 No2,41.8059,-93.5708,299.5777,2015-03-09 0:00,452584,4628380,1_rwis_imgs_masks\IDOT-006-01_202001191409img.jpg,1_rwis_imgs_masks\IDOT-006-01_202001191409mask.jpg,0.5594,Partly Snow Coverage
+-1,RGRI4,Grinnell (I-80),41.6975,-92.7257,281,2000-02-21 0:00,522824,4616230,1_rwis_imgs_masks\IDOT-026-06_202001191406img.jpg,1_rwis_imgs_masks\IDOT-026-06_202001191406mask.jpg,0.7018,Full Snow Coverage
+-1,RTPI4,Tipton (I-80),41.6448,-91.1272,202,2000-02-21 0:00,655964,4612030,1_rwis_imgs_masks\IDOT-048-01_202001191428img.jpg,1_rwis_imgs_masks\IDOT-048-01_202001191428mask.jpg,0.1552,Partly Snow Coverage
+-1,VCTI4,Victor,41.696,-92.28,263.51263,2018-05-25 0:00,559912,4616280,1_rwis_imgs_masks\IDOT-006-02_202001191459img.jpg,1_rwis_imgs_masks\IDOT-006-02_202001191459mask.jpg,0.1432,Partly Snow Coverage
