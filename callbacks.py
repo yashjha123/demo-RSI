@@ -181,10 +181,10 @@ def plot_semi_fig(semi_model, semi_nugget, semi_range, semi_sill):
 
 ####callback for updating RSI Interpolated Map via button
 # df = crop_cal_perc_white_black.ObtainAdjustedRSI(df=df)
-knowns = [[df['pro_X'][i], df['pro_Y'][i], df['RSI'][i]] for i in range(len(df))]
+# knowns = [[df['pro_X'][i], df['pro_Y'][i], df['RSI'][i]] for i in range(len(df))]
 
-df_unknown = pd.read_csv("3_2018-11-25_7_STATEOFIOWAI35N.csv")
-unknowns = [[df_unknown['pro_X'][i], df_unknown['pro_Y'][i]] for i in range(len(df_unknown))]
+# df_unknown = pd.read_csv("3_2018-11-25_7_STATEOFIOWAI35N.csv")
+# unknowns = [[df_unknown['pro_X'][i], df_unknown['pro_Y'][i]] for i in range(len(df_unknown))]
 
 
 @app.callback(

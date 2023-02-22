@@ -18,12 +18,19 @@ import utils
 from utils import *
 import callbacks
 
+
+from AVL_Image_URL import get_cameras, grab_avl_data
+
 df = load_data()
+
+
+
 
 rsc_colors = {'Full Snow Coverage': 'blue',
               'Partly Snow Coverage': '#87CEFA',
               'Bare': '#808080',
               'Undefined': '#FDDD0D'}
+print(df['Predict'])
 
 df_subs = []
 for rsc_type in list(rsc_colors.keys()):
@@ -32,6 +39,7 @@ for rsc_type in list(rsc_colors.keys()):
         pass
     else:
         df_subs.append(to_append)
+print("GOLO")
 locations = [go.Scattermapbox(
     lon=df_sub['x'],
     lat=df_sub['y'],
@@ -43,6 +51,7 @@ locations = [go.Scattermapbox(
     showlegend=True,
     name=df_sub['Predict'].iloc[0],
 ) for df_sub in df_subs]
+print("LOGO")
 
 mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
 map_layout = go.Layout(
@@ -167,4 +176,4 @@ app.layout = PageLayout()
 
 ##----------------------------------------------------------
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)

@@ -23,8 +23,11 @@ import crop_cal_perc_white_black
 from crop_cal_perc_white_black import *
 
 #recommended semi parameters
+print("DOLO")
 updated_df = crop_cal_perc_white_black.ObtainAdjustedRSI(df=df)
+print("NONO")
 nugget, rnge, sill, maxlag, n_lags, dists, experiments = utils.ConstructSemi(df=updated_df)
+print("FOLO")
 
 def NamedGroup(children, label, **kwargs):
     return dbc.FormGroup(

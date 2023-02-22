@@ -3,10 +3,24 @@ import pandas as pd
 import copy
 import math
 
-
+import pandas as pd
+from AVL_Image_URL import get_cameras, grab_avl_data
+from datetime import date
+import datetime
 def load_data():
     # df = pd.read_csv("1_predicted_I35N_down_2019-01-12_07.csv")
-    df = pd.read_csv("test.csv")
+    # df = pd.read_csv("test.csv")
+    
+
+
+    time = date.today().strftime("%Y-%m-%dT%H:%M")
+    d = grab_avl_data(get_cameras("3000",time))
+    # print(d)
+    df = pd.DataFrame(d)
+    print(df['RSI'])
+    # print(p)
+
+
     return df
 
 
@@ -18,7 +32,9 @@ def ConvertProjtoDegree(pro_xs=[], pro_ys=[]):
     inProj = Proj(init='epsg:26915')  # NAD83 / UTM zone 15N
     outProj = Proj(init='epsg:4269')  # NAD83
 
-    xs, ys = transform(inProj, outProj, pro_xs, pro_ys)
+    
+    xs, ys = transform(inProj, outProj, pro_xs, pro_ys )
+    print(xs,ys)
     return xs, ys
 
 
@@ -46,28 +62,40 @@ def ObtainMaxDistance(xys):
             dist = Eudist(xy, cxy)
             dists.append(dist)
     dists.sort(reverse=True)
-
+    print(dists[:10])
     return dists[:10]
 
 
 def ConstructSemi(df={}):
     ###project coordinates into meters
+    a = datetime.datetime.now()
+
     inProj = Proj(init='epsg:4269')  # NAD83
     outProj = Proj(init='epsg:26915')  # NAD83 / UTM zone 15N
 
-    xs = np.array(df['PHOTO_LONG'])
-    ys = np.array(df['PHOTO_LATI'])
+    xs = np.array(df['x'])
+    ys = np.array(df['y'])
+    b = datetime.datetime.now()
+    print("FIRST",b-a)
     pro_xs, pro_ys = transform(inProj, outProj, xs, ys)
+    c = datetime.datetime.now()
+    print("SECOND",c-b)
+
+    # print(pro_xs,pro_ys)
     df['pro_X'] = pro_xs
     df['pro_Y'] = pro_ys
     values = df['RSI']
 
     xys = []
-    for i in range(len(pro_xs)):
-        xys.append([pro_xs[i], pro_ys[i]])
+    print("FORO")
+    xys = list(zip(pro_xs,pro_ys))
+    print(xys)
+    # for i in range(len(pro_xs)):
+        # xys.append([pro_xs[i], pro_ys[i]])
+    # d = print("THIRD",)
 
-    dists = ObtainMaxDistance(xys)
-    max_dist = dists[0]
+    # dists = 279498.4527227931#ObtainMaxDistance(xys)
+    max_dist = 279498.4527227931#dists[0]
 
     coordinates = np.array(xys)
     maxlag = max_dist / 2
@@ -79,6 +107,9 @@ def ConstructSemi(df={}):
     #                                     estimator='matheron',
     #                                     bin_func='uniform',
     #                                     maxlag=maxlag)
+    # print(values)
+    print("ECO")
+    e = datetime.datetime.now()
 
     V = Variogram(coordinates=coordinates,
                   values=values,
@@ -96,6 +127,9 @@ def ConstructSemi(df={}):
     n_lags = V.n_lags
     dists = V.bins / 1000
     experiments = V.experimental
+    f = datetime.datetime.now()
+    print(f-e)
+    print("FOMO")
 
     return nugget, rnge, sill, maxlag / 1000, n_lags, dists, experiments
 

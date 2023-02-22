@@ -25,31 +25,31 @@ def ObtainAdjustedRSI(df={}):
         if predicts[i] == 'Undefined':
             updated_df.at[i, 'RSI'] = None
         else:
-            ###load img from url
-            img_url = img_urls[i]
-            response = requests.get(img_url)
-            img = Image.open(BytesIO(response.content))
+            # ###load img from url
+            # img_url = img_urls[i]
+            # response = requests.get(img_url)
+            # img = Image.open(BytesIO(response.content))
 
-            ###crop img
-            box = (0.3 * img.width, 0.5 * img.height, 0.6 * img.width, 0.6 * img.height)  # (left, upper, right, lower)
-            area = img.crop(box)
+            # ###crop img
+            # box = (0.3 * img.width, 0.5 * img.height, 0.6 * img.width, 0.6 * img.height)  # (left, upper, right, lower)
+            # area = img.crop(box)
 
-            ###convert to BW
-            # read grayscale image
-            gray_image = ImageOps.grayscale(area)
-            gray_image = np.array(gray_image)
-            # convert to binary
-            (thresh, im_bw) = cv2.threshold(gray_image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+            # ###convert to BW
+            # # read grayscale image
+            # gray_image = ImageOps.grayscale(area)
+            # gray_image = np.array(gray_image)
+            # # convert to binary
+            # (thresh, im_bw) = cv2.threshold(gray_image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
-            ###calculate binary proportion
-            tot_cells = len(np.where(im_bw == 255)[0]) + len(np.where(im_bw == 0)[0])
-            perc_white = len(np.where(im_bw == 255)[0]) / tot_cells
-            perc_black = len(np.where(im_bw == 0)[0]) / tot_cells
+            # ###calculate binary proportion
+            # tot_cells = len(np.where(im_bw == 255)[0]) + len(np.where(im_bw == 0)[0])
+            # perc_white = len(np.where(im_bw == 255)[0]) / tot_cells
+            # perc_black = len(np.where(im_bw == 0)[0]) / tot_cells
 
             if predicts[i] == 'Full Snow Coverage':
                 updated_df.at[i, 'RSI'] = 0.35
             elif predicts[i] == 'Partly Snow Coverage':
-                updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * perc_white
+                updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * 0.4
             elif predicts[i] == 'Bare':
                 updated_df.at[i, 'RSI'] = 0.9
 
