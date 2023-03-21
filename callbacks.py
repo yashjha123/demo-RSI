@@ -400,6 +400,7 @@ def plot_semi_fig(semi_model, semi_nugget, semi_range, semi_sill,maxlag,n_lags,d
 
 
 ####callback for updating RSI Interpolated Map via button
+
 @app.callback(
     Output('RSI_map', 'figure'),
     [Input('rsi_interpolate', 'n_clicks'),Input('updated_df', 'data'),Input('df_unknown', 'data')],

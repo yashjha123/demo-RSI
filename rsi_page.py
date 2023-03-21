@@ -23,7 +23,7 @@ from index_page import *
 import crop_cal_perc_white_black
 from crop_cal_perc_white_black import *
 
-#recommended semi parameters
+
 
 def NamedGroup(children, label, **kwargs):
     return dbc.FormGroup(

@@ -3,7 +3,27 @@ import pandas as pd
 import copy
 import math
 
+import pandas as pd
+from AVL_Image_URL import get_cameras, grab_avl_data
+from datetime import date
+import datetime
+from datetime import timedelta
+def load_data():
+    # df = pd.read_csv("1_predicted_I35N_down_2019-01-12_07.csv")
+    # df = pd.read_csv("test.csv")
+    
 
+
+    time = (date.today()+timedelta(days=-1)).strftime("%Y-%m-%dT%H:%M")
+    d = grab_avl_data(get_cameras("400",time))
+    # print(d)
+    df = pd.DataFrame(d)
+    print(df['RSI'])
+    # print(p)
+
+
+    return df
+"""
 def load_data(picked_date=''):
     # df = pd.read_csv("1_predicted_I35N_down_2019-01-12_07.csv")
     df = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test'+picked_date+'.csv')
@@ -11,6 +31,7 @@ def load_data(picked_date=''):
     df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv')
     df_rwis_all = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/2_obtain_rsi_for_imgs.csv")
     return df, df_rwis, df_unknown, df_rwis_all
+"""
 
 
 from pyproj import Proj, transform
@@ -21,7 +42,9 @@ def ConvertProjtoDegree(pro_xs=[], pro_ys=[]):
     inProj = Proj(init='epsg:26915')  # NAD83 / UTM zone 15N
     outProj = Proj(init='epsg:4269')  # NAD83
 
-    xs, ys = transform(inProj, outProj, pro_xs, pro_ys)
+    
+    xs, ys = transform(inProj, outProj, pro_xs, pro_ys )
+    print(xs,ys)
     return xs, ys
 
 
@@ -49,28 +72,40 @@ def ObtainMaxDistance(xys):
             dist = Eudist(xy, cxy)
             dists.append(dist)
     dists.sort(reverse=True)
-
+    print(dists[:10])
     return dists[:10]
 
 
 def ConstructSemi(df={}):
     ###project coordinates into meters
+    a = datetime.datetime.now()
+
     inProj = Proj(init='epsg:4269')  # NAD83
     outProj = Proj(init='epsg:26915')  # NAD83 / UTM zone 15N
 
-    xs = np.array(df['PHOTO_LONG'])
-    ys = np.array(df['PHOTO_LATI'])
+    xs = np.array(df['x'])
+    ys = np.array(df['y'])
+    b = datetime.datetime.now()
+    print("FIRST",b-a)
     pro_xs, pro_ys = transform(inProj, outProj, xs, ys)
+    c = datetime.datetime.now()
+    print("SECOND",c-b)
+
+    # print(pro_xs,pro_ys)
     df['pro_X'] = pro_xs
     df['pro_Y'] = pro_ys
     values = df['RSI']
 
     xys = []
-    for i in range(len(pro_xs)):
-        xys.append([pro_xs[i], pro_ys[i]])
+    print("FORO")
+    xys = list(zip(pro_xs,pro_ys))
+    print(xys)
+    # for i in range(len(pro_xs)):
+        # xys.append([pro_xs[i], pro_ys[i]])
+    # d = print("THIRD",)
 
-    dists = ObtainMaxDistance(xys)
-    max_dist = dists[0]
+    # dists = 279498.4527227931#ObtainMaxDistance(xys)
+    max_dist = 279498.4527227931#dists[0]
 
     coordinates = np.array(xys)
     maxlag = max_dist / 2
@@ -82,7 +117,31 @@ def ConstructSemi(df={}):
     #                                     estimator='matheron',
     #                                     bin_func='uniform',
     #                                     maxlag=maxlag)
+    # print(values)
+    print("ECO")
+    e = datetime.datetime.now()
+"""
 
+    V = Variogram(coordinates=coordinates,
+                  values=values,
+                  use_nugget=True,
+                  model='spherical',
+                  estimator='matheron',
+                  bin_func='uniform',
+                  maxlag=maxlag)
+
+    semi_infos = V.describe()
+    rnge = round(semi_infos['effective_range'] / 1000, 2)
+    psill = round(semi_infos['sill'], 2)
+    nugget = round(semi_infos['nugget'], 2)
+    sill = round(semi_infos['sill'] + semi_infos['nugget'], 2)
+    n_lags = V.n_lags
+    dists = V.bins / 1000
+    experiments = V.experimental
+    f = datetime.datetime.now()
+    print(f-e)
+    print("FOMO")
+"""
     # V = Variogram(coordinates=coordinates,
     #               values=values,
     #               use_nugget=True,
@@ -108,6 +167,7 @@ def ConstructSemi(df={}):
     #experiments = V.experimental
     experiments = [0.01293204, 0.01796298, 0.01750724, 0.02161075, 0.03031476, 0.02562167,
                    0.02634403, 0.0252123, 0.02833866, 0.03625549]
+
 
     return nugget, rnge, sill, maxlag / 1000, n_lags, dists, experiments
 

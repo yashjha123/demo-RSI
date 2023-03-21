@@ -18,6 +18,56 @@ import utils
 import callbacks
 
 
+from AVL_Image_URL import get_cameras, grab_avl_data
+
+df = load_data()
+
+
+
+
+rsc_colors = {'Full Snow Coverage': 'blue',
+              'Partly Snow Coverage': '#87CEFA',
+              'Bare': '#808080',
+              'Undefined': '#FDDD0D'}
+print(df['Predict'])
+
+df_subs = []
+for rsc_type in list(rsc_colors.keys()):
+    to_append = df[df['Predict'] == rsc_type]
+    if len(to_append) == 0:
+        pass
+    else:
+        df_subs.append(to_append)
+print("GOLO")
+locations = [go.Scattermapbox(
+    lon=df_sub['x'],
+    lat=df_sub['y'],
+    mode='markers',
+    marker={'color': rsc_colors[df_sub['Predict'].iloc[0]], 'size': 10, 'opacity': 0.6},
+    hoverinfo='text',
+    hovertext=df_sub['Predict'],
+    customdata=df_sub['PHOTO_URL'],
+    showlegend=True,
+    name=df_sub['Predict'].iloc[0],
+) for df_sub in df_subs]
+print("LOGO")
+
+mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
+map_layout = go.Layout(
+    mapbox=go.layout.Mapbox(
+        accesstoken=mapbox_access_token,
+        center=go.layout.mapbox.Center(lat=mean(df["y"]), lon=mean(df["x"])),
+        style="dark",
+        zoom=8,
+        pitch=0,
+    ),
+    height=740,
+    margin=dict(l=15, r=15, t=15, b=15),
+    paper_bgcolor="#303030",
+    font_color="white"
+)
+
+
 banner = html.Div(
     id="banner",
     className="banner",
@@ -161,4 +211,5 @@ app.layout = PageLayout()
 
 ##----------------------------------------------------------
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False,host='0.0.0.0',port=6000)
+
