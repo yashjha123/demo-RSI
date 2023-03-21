@@ -7,14 +7,15 @@ import pandas as pd
 from AVL_Image_URL import get_cameras, grab_avl_data
 from datetime import date
 import datetime
+from datetime import timedelta
 def load_data():
     # df = pd.read_csv("1_predicted_I35N_down_2019-01-12_07.csv")
     # df = pd.read_csv("test.csv")
     
 
 
-    time = date.today().strftime("%Y-%m-%dT%H:%M")
-    d = grab_avl_data(get_cameras("3000",time))
+    time = (date.today()+timedelta(days=-1)).strftime("%Y-%m-%dT%H:%M")
+    d = grab_avl_data(get_cameras("400",time))
     # print(d)
     df = pd.DataFrame(d)
     print(df['RSI'])

@@ -29,7 +29,7 @@ def get_cameras(window_size, time):
     return data
 from tqdm import tqdm
 def getLabel(result):
-    labels =['Full Snow Coverage','Partly Snow Coverage','Bare','Undefined']
+    labels =['Bare','Partly Snow Coverage','Undefined','Full Snow Coverage']
     return labels[result.index(max(result))]
 def grab_avl_data(results):
     """
@@ -41,16 +41,16 @@ def grab_avl_data(results):
 
 
     url = ("http://127.0.0.1:8080/predictBatches")
-
-    BATCH_SIZE = 250
+    print(results['data'])
+    BATCH_SIZE = 20
     for i in tqdm(range(0,len(results['data']),BATCH_SIZE)):
         img_urls = [x['imgurl'] for x in results['data'][i:i+BATCH_SIZE]]
+        # print(img_urls)
         data = {"img_urls": img_urls}
         r = requests.post(url, json=data)
         result = (r.json())['result']
-        for i,d in enumerate(img_urls,0):
-            result_dict[d] = result[i]
-
+        print(result)
+        result_dict.update(result)
 
     for data in tqdm(results['data']):
         
@@ -66,10 +66,10 @@ def grab_avl_data(results):
             'x':data['lon'],    
             'y':data['lat'],
             'PHOTO_URL':data['imgurl'],
-            'prob_Bare': res[2],
+            'prob_Bare': res[0],
             'prob_Partly Snow Coverage': res[1],
-            'prob_Undefined': res[3],
-            'prob_Full Snow Coverage': res[0],
+            'prob_Undefined': res[2],
+            'prob_Full Snow Coverage': res[3],
             "RSI": 0.4 #BUG
         }
         dashcams.append(dashcam)
@@ -80,7 +80,7 @@ def convert_UTC():
     pass
 
 def main():
-    window_size = '300'
+    window_size = '100'
     today = date.today().strftime("%Y/%m/%d/") # TODO: Input user defined UTC Timestamp
     # convert_UTC()
     
