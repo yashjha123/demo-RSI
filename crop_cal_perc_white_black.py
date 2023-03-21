@@ -1,15 +1,16 @@
-import numpy as np
+#import numpy as np
 #import pandas as pd
+import random
 
-from PIL import Image, ImageOps
+# from PIL import Image, ImageOps
 # from skimage.morphology import convex_hull_image
 # from skimage import data, img_as_float
 # from skimage.util import invert
 # from skimage.color import rgb2gray
 # from skimage.filters import threshold_sauvola
-import cv2
-import requests
-from io import BytesIO
+# import cv2
+# import requests
+# from io import BytesIO
 
 
 # from tensorflow.keras.preprocessing.image import img_to_array, load_img
@@ -30,9 +31,16 @@ def ObtainAdjustedRSI(df={}):
             # response = requests.get(img_url)
             # img = Image.open(BytesIO(response.content))
 
+
             # ###crop img
             # box = (0.3 * img.width, 0.5 * img.height, 0.6 * img.width, 0.6 * img.height)  # (left, upper, right, lower)
             # area = img.crop(box)
+
+            #
+            # ###crop img
+            # box = (0.3 * img.width, 0.5 * img.height, 0.6 * img.width, 0.6 * img.height)  # (left, upper, right, lower)
+            # area = img.crop(box)
+            #
 
             # ###convert to BW
             # # read grayscale image
@@ -50,6 +58,8 @@ def ObtainAdjustedRSI(df={}):
                 updated_df.at[i, 'RSI'] = 0.35
             elif predicts[i] == 'Partly Snow Coverage':
                 updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * 0.4
+                # updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * perc_white
+                #updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * random.random()
             elif predicts[i] == 'Bare':
                 updated_df.at[i, 'RSI'] = 0.9
 
@@ -57,7 +67,6 @@ def ObtainAdjustedRSI(df={}):
 
 ##df = pd.read_csv('test.csv')
 ##df = ObtainAdjustedRSI(df=df)
-
 
 
 

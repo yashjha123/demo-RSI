@@ -93,4 +93,3 @@ def main(img_urls=img_urls):
     rsc_predicts = predict(img_urls)
     return rsc_predicts
 
-
