@@ -4,10 +4,13 @@ import copy
 import math
 
 
-def load_data():
+def load_data(picked_date=''):
     # df = pd.read_csv("1_predicted_I35N_down_2019-01-12_07.csv")
-    df = pd.read_csv("test.csv")
-    return df
+    df = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test'+picked_date+'.csv')
+    df_rwis = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/RWIS_locs.csv")
+    df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv')
+    df_rwis_all = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/2_obtain_rsi_for_imgs.csv")
+    return df, df_rwis, df_unknown, df_rwis_all
 
 
 from pyproj import Proj, transform
@@ -23,8 +26,8 @@ def ConvertProjtoDegree(pro_xs=[], pro_ys=[]):
 
 
 ###from dash_bootstrap_mapbox_v3_rsi_semivariogram.py
-import skgstat as skg
-from skgstat import Variogram
+# import skgstat as skg
+# from skgstat import Variogram
 
 
 ###Semivariogram####
@@ -80,22 +83,31 @@ def ConstructSemi(df={}):
     #                                     bin_func='uniform',
     #                                     maxlag=maxlag)
 
-    V = Variogram(coordinates=coordinates,
-                  values=values,
-                  use_nugget=True,
-                  model='spherical',
-                  estimator='matheron',
-                  bin_func='uniform',
-                  maxlag=maxlag)
+    # V = Variogram(coordinates=coordinates,
+    #               values=values,
+    #               use_nugget=True,
+    #               model='spherical',
+    #               estimator='matheron',
+    #               bin_func='uniform',
+    #               maxlag=maxlag)
 
-    semi_infos = V.describe()
-    rnge = round(semi_infos['effective_range'] / 1000, 2)
-    psill = round(semi_infos['sill'], 2)
-    nugget = round(semi_infos['nugget'], 2)
-    sill = round(semi_infos['sill'] + semi_infos['nugget'], 2)
-    n_lags = V.n_lags
-    dists = V.bins / 1000
-    experiments = V.experimental
+    #semi_infos = V.describe()
+    #rnge = round(semi_infos['effective_range'] / 1000, 2)
+    rnge = 60.99
+    #psill = round(semi_infos['sill'], 2)
+    psill = 0.02
+    #nugget = round(semi_infos['nugget'], 2)
+    nugget = 0.01
+    #sill = round(semi_infos['sill'] + semi_infos['nugget'], 2)
+    sill = 0.03
+    #n_lags = V.n_lags
+    n_lags = 10
+    #dists = V.bins / 1000
+    dists = [4.14540447, 8.21966244, 13.14269996, 18.55741696, 24.02338575, 30.49752274, 
+             37.83630649, 45.28761025, 53.05467633, 60.99468264]
+    #experiments = V.experimental
+    experiments = [0.01293204, 0.01796298, 0.01750724, 0.02161075, 0.03031476, 0.02562167,
+                   0.02634403, 0.0252123, 0.02833866, 0.03625549]
 
     return nugget, rnge, sill, maxlag / 1000, n_lags, dists, experiments
 
@@ -112,8 +124,8 @@ def isNum(h=''):
 
 def CalSemivariance(point1=[], point2=[], h='', n=0, r=10, s=1,
                     model='Sph'):  # h - distance ; n - nugget; r - range; ps - partial sill
-    # print(point1)
-    # print(point2)
+    #print(point1)
+    #print(point2)
     if isNum(h=h):
         pass
     else:

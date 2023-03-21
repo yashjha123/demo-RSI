@@ -18,13 +18,12 @@ from app import app
 import utils
 import callbacks
 
+import index_page
 from index_page import *
 import crop_cal_perc_white_black
 from crop_cal_perc_white_black import *
 
 #recommended semi parameters
-updated_df = crop_cal_perc_white_black.ObtainAdjustedRSI(df=df)
-nugget, rnge, sill, maxlag, n_lags, dists, experiments = utils.ConstructSemi(df=updated_df)
 
 def NamedGroup(children, label, **kwargs):
     return dbc.FormGroup(
@@ -35,14 +34,6 @@ def NamedGroup(children, label, **kwargs):
         **kwargs
     )
 
-content = html.Div([dcc.Location(id="url"), banner, html.Div(id="page-content")])
-
-container = dbc.Container([content], fluid=True, )
-
-# Main index function that will call and return all layout variables
-def PageLayout():
-    layout = html.Div([container])
-    return layout
 
 
 def HomePage():
@@ -56,6 +47,11 @@ def HomePage():
                             dbc.Card(
                                 style={'height': '44vh'},
                                 children=[
+                                    dcc.Store(id='maxlag'),
+                                    dcc.Store(id='n_lags'),
+                                    dcc.Store(id='dists'),
+                                    dcc.Store(id='experiments'),
+                                    dcc.Store(id='updated_df'),
                                     dbc.CardHeader("Semivariogram Parameters"),
                                     dbc.CardBody(
                                         [
@@ -82,7 +78,7 @@ def HomePage():
                                                     min=0,
                                                     max=1,
                                                     step=0.01,
-                                                    value=nugget,
+                                                    value=0,
                                                     style={'background-color': '#242633', 'color': 'white', 'width': '200px',}
                                                 ),
                                                 label="Semivariogram Nugget",
@@ -94,7 +90,7 @@ def HomePage():
                                                     type="number",
                                                     min=0,
                                                     step=0.01,
-                                                    value=sill,
+                                                    value=1,
                                                     style={'background-color': '#242633', 'color': 'white', 'width': '200px',}
                                                 ),
                                                 label="Semivariogram Sill",
@@ -106,7 +102,7 @@ def HomePage():
                                                     type="number",
                                                     min=1,
                                                     max=200,
-                                                    value=rnge,
+                                                    value=100,
                                                     style={'background-color': '#242633', 'color': 'white',  'width': '200px',}
                                                     # marks={i: str(i) for i in range(0, 200, 20)},
                                                 ),
@@ -149,7 +145,7 @@ def HomePage():
                                     dcc.Loading(
                                         dbc.Spinner(
                                             children=[dcc.Graph(
-                                            id="map",
+                                            id="RSI_map",
                                             #figure=go.Figure(data=locations, layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
                                         )],
