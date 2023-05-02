@@ -31,6 +31,47 @@ from tqdm import tqdm
 def getLabel(result):
     labels =['Bare','Partly Snow Coverage','Undefined','Full Snow Coverage']
     return labels[result.index(max(result))]
+def checkcache(results):
+    img_urls = []
+    for d in results['data']:
+        img_urls.append(d['imgurl'])
+    dashcams = []
+    url = ("http://127.0.0.1:8080/loadFromCache")
+
+    data = {"img_urls": img_urls}
+    r = requests.post(url, json=data)
+    result_dict = (r.json())['result']
+    for data in results['data']:
+        if result_dict[data['imgurl']] == "None":
+            dashcam = {
+                # 'name':data['cid'],
+                # 'date':data['utc_valid'],
+                'Predict': "Not labeled yet",
+                'LABEL': "Not labeled yet",
+                'x':data['lon'],    
+                'y':data['lat'],
+                'PHOTO_URL':data['imgurl'],
+                "RSI": 0.4 #BUG
+            }
+        else:
+            res = result_dict[data['imgurl']]
+            inp = getLabel(res)
+            dashcam = {
+                # 'name':data['cid'],
+                # 'date':data['utc_valid'],
+                'Predict': inp,
+                'LABEL': inp,
+                'x':data['lon'],    
+                'y':data['lat'],
+                'PHOTO_URL':data['imgurl'],
+                'prob_Bare': res[0],
+                'prob_Partly Snow Coverage': res[1],
+                'prob_Undefined': res[2],
+                'prob_Full Snow Coverage': res[3],
+                "RSI": 0.4 #BUG
+            }
+        dashcams.append(dashcam)
+    return dashcams
 def grab_avl_data(results):
     """
     Processes JSON to grab AVL specific data
@@ -75,6 +116,31 @@ def grab_avl_data(results):
         dashcams.append(dashcam)
 
     return dashcams
+
+def getPredictForOneImage(img_url):
+    url = ("http://127.0.0.1:8080/predict")
+    r = requests.get(url+"?img_url="+img_url)
+
+    res = (r.json())['result']
+    inp = getLabel(res)
+    dashcam = {
+        # 'name':data['cid'],
+        # 'date':data['utc_valid'],
+        'PHOTO_URL':img_url,
+        'Predict': inp,
+        'LABEL': inp,
+        'prob_Bare': res[0],
+        'prob_Partly Snow Coverage': res[1],
+        'prob_Undefined': res[2],
+        'prob_Full Snow Coverage': res[3],
+    }
+    # ret = {
+    #     'prob_Bare': res[0],
+    #     'prob_Partly Snow Coverage': res[1],
+    #     'prob_Undefined': res[2],
+    #     'prob_Full Snow Coverage': res[3],
+    # }
+    return dashcam
 
 def convert_UTC():
     pass

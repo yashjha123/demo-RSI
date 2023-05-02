@@ -4,34 +4,40 @@ import copy
 import math
 
 import pandas as pd
-from AVL_Image_URL import get_cameras, grab_avl_data
+from AVL_Image_URL import get_cameras, grab_avl_data, checkcache
+
 from datetime import date
 import datetime
 from datetime import timedelta
-def load_data():
-    # df = pd.read_csv("1_predicted_I35N_down_2019-01-12_07.csv")
-    # df = pd.read_csv("test.csv")
+# def load_data():
+#     # df = pd.read_csv("1_predicted_I35N_down_2019-01-12_07.csv")
+#     # df = pd.read_csv("test.csv")
     
 
 
-    time = (date.today()+timedelta(days=-1)).strftime("%Y-%m-%dT%H:%M")
-    d = grab_avl_data(get_cameras("400",time))
+#     time = (date.today()+timedelta(days=-6)).strftime("%Y-%m-%dT%H:%M")
+#     d = grab_avl_data(get_cameras("50",time))
+#     # print(d)
+#     df = pd.DataFrame(d)
+#     # print(df['RSI'])
+#     # print(p)
+
+
+#     return df
+
+def load_data(picked_date_time):
+    # df = pd.read_csv("1_predicted_I35N_down_2019  -01-12_07.csv")
+    # df = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test'+picked_date+'.csv')
+    time = (picked_date_time).strftime("%Y-%m-%dT%H:%M")
+    d = checkcache(get_cameras("400",time))
     # print(d)
     df = pd.DataFrame(d)
-    print(df['RSI'])
-    # print(p)
-
-
-    return df
-"""
-def load_data(picked_date=''):
-    # df = pd.read_csv("1_predicted_I35N_down_2019-01-12_07.csv")
-    df = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test'+picked_date+'.csv')
+    
     df_rwis = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/RWIS_locs.csv")
     df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv')
     df_rwis_all = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/2_obtain_rsi_for_imgs.csv")
     return df, df_rwis, df_unknown, df_rwis_all
-"""
+
 
 
 from pyproj import Proj, transform
@@ -120,28 +126,28 @@ def ConstructSemi(df={}):
     # print(values)
     print("ECO")
     e = datetime.datetime.now()
-"""
+    """
 
-    V = Variogram(coordinates=coordinates,
-                  values=values,
-                  use_nugget=True,
-                  model='spherical',
-                  estimator='matheron',
-                  bin_func='uniform',
-                  maxlag=maxlag)
+        V = Variogram(coordinates=coordinates,
+                    values=values,
+                    use_nugget=True,
+                    model='spherical',
+                    estimator='matheron',
+                    bin_func='uniform',
+                    maxlag=maxlag)
 
-    semi_infos = V.describe()
-    rnge = round(semi_infos['effective_range'] / 1000, 2)
-    psill = round(semi_infos['sill'], 2)
-    nugget = round(semi_infos['nugget'], 2)
-    sill = round(semi_infos['sill'] + semi_infos['nugget'], 2)
-    n_lags = V.n_lags
-    dists = V.bins / 1000
-    experiments = V.experimental
-    f = datetime.datetime.now()
-    print(f-e)
-    print("FOMO")
-"""
+        semi_infos = V.describe()
+        rnge = round(semi_infos['effective_range'] / 1000, 2)
+        psill = round(semi_infos['sill'], 2)
+        nugget = round(semi_infos['nugget'], 2)
+        sill = round(semi_infos['sill'] + semi_infos['nugget'], 2)
+        n_lags = V.n_lags
+        dists = V.bins / 1000
+        experiments = V.experimental
+        f = datetime.datetime.now()
+        print(f-e)
+        print("FOMO")
+    """
     # V = Variogram(coordinates=coordinates,
     #               values=values,
     #               use_nugget=True,

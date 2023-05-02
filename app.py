@@ -1,3 +1,6 @@
+# import diskcache
+# cache = diskcache.Cache("./cache")
+# background_callback_manager = DiskcacheManager(cache)
 from datetime import datetime as dt
 from datetime import date, timedelta
 import os
@@ -13,6 +16,14 @@ import dash_bootstrap_components as dbc
 
 from dash.dependencies import Input, Output
 
+from dash.long_callback import DiskcacheLongCallbackManager
+
+import diskcache
+cache = diskcache.Cache("./cache")
+background_callback_manager = DiskcacheLongCallbackManager(cache)
+# df = load_data()
+
+# app = dash.Dash(__name__, background_callback_manager=background_callback_manager)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY], suppress_callback_exceptions=True)
 
 app.title = "Real-Time RSC Monitoring"

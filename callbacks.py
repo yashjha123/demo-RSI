@@ -2,9 +2,13 @@ from datetime import datetime as dt
 from datetime import date, timedelta
 import time
 import os
+from dash.exceptions import PreventUpdate
+
+# import plotly.graph_objects as go
+
 from statistics import mean
 from random import randint, shuffle
-
+from dateutil.parser import parse
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
@@ -12,7 +16,7 @@ import dash
 import dash_html_components as html
 import dash_core_components as dcc
 import dash_bootstrap_components as dbc
-
+# from dash.exceptions import PreventDefault
 from dash.dependencies import Input, Output, State
 from utils import *
 import utils
@@ -23,7 +27,11 @@ import rsi_page
 from rsi_page import *
 import crop_cal_perc_white_black
 from crop_cal_perc_white_black import *
+from AVL_Image_URL import getPredictForOneImage
+from dash_extensions.enrich import FileSystemCache, Trigger
 
+fsc = FileSystemCache("cache_dir")
+fsc.set("progress", None)
 
 mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
 
@@ -33,12 +41,41 @@ mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaW
 # Menu callback, set and return
 # Declair function  that connects other pages with content to container
 
-df, df_rwis, df_unknown, df_rwis_all = utils.load_data()
+class TraceInfo:
+    def __init__(self, figure):
+        self.fig = figure
+        self.traces = self.__traces()
+        self.number = self.__len__()
+        self.names = self.__trace_names()
+        self.colors = self.__trace_colors()
+
+    def __getitem__(self, index):
+        return self.traces[index]
+
+    def __len__(self):
+        return len(self.traces)
+
+    def __traces(self):
+        return self.fig.get('data', [])
+
+    def __trace_colors(self):
+        return [trace.get('marker', {}).get('color') for trace in self.traces]
+
+    def __trace_names(self):
+        return [trace.get('name') for trace in self.traces]
+
+df, df_rwis, df_unknown, df_rwis_all = utils.load_data(date.today())
 
 rsc_colors = {'Full Snow Coverage': 'white',
               'Partly Snow Coverage': 'grey',
               'Bare': 'black',
-              'Undefined': '#FDDD0D'}
+              'Undefined': '#FDDD0D',
+              'Not labeled yet':'green'}
+
+rsc_labels = ['Full Snow Coverage',
+              'Partly Snow Coverage',
+              'Bare',
+              'Undefined']
 data = [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),rsc_colors]
 
 @app.callback([Output('df', 'data'),Output('df_rwis', 'data'),
@@ -46,7 +83,7 @@ data = [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_di
                Output('rsc_colors', 'data'),],
               [Input("url", "pathname")],)
 def init_data(pathname):
-    
+    # data = []
 
     if pathname == '/':
         return data
@@ -73,16 +110,70 @@ def display_page(pathname):
     else:
         return html.H5('You are looking at path = ' + pathname)
 
+# Background process call
+# @app.callback() 
+# @app.callback(Input("done_points","data"),Input("process_in_background","data"))
+# def show_progress_bar()
+
+# @app.callback(Output("result", "children"), Trigger("interval", "n_intervals"))
+# def update_progress():
+#     value = fsc.get("progress")  # get progress
+#     print("FSC",value)
+#     if value is None:
+#         return "Not started yet!"
+#     return "Progress is {:.0f}%".format(float(fsc.get("progress")) * 100)
+
+
+# @app.callback(Output("result", "children"),Input("process_in_background", "data"))
+from dash.long_callback import DiskcacheLongCallbackManager
+
+import diskcache
+cache = diskcache.Cache("./cache")
+background_callback_manager = DiskcacheLongCallbackManager(cache)
+# @app.long_callback(
+#     output=Output("result", "children"),
+#     inputs=Input("process_in_background", "data"),
+#     background=True,
+#     running=[
+#         (
+#             Output("result", "style"),
+#             {"visibility": "hidden"},
+#             {"visibility": "visible"},
+#         ),
+#         (
+#             Output("progress_bar", "style"),
+#             {"visibility": "visible"},
+#             {"visibility": "hidden"},
+#         ),
+#     ],
+#     manager=background_callback_manager,
+#     progress=[Output("progress_bar", "value"), Output("progress_bar", "max")],
+#     # progress_default=make_progress_graph(0, 10),
+#     prevent_initial_call=True
+# )
+# def run_calculation(set_progress,data):
+#     # print(set_progress)
+#     if data == None:
+#         raise PreventUpdate
+#     for i,url in enumerate(data):
+#         getPredictForOneImage(url)
+#         print(i)
+#         set_progress((str(i), str(len(data))))
+
+#         # fsc.set("progress",str(i))
+#     return "done"
+
 #callback for the AVL points map
 #to determine the file
 @app.callback(
     #Output('dd-output-container', 'children'),
     [Output('picked_df', 'data'),Output('picked_df_rwis', 'data'),Output('picked_df_unknown', 'data'),
-     Output('picked_df_rwis_all', 'data'),Output('AVL_map', 'figure'),],
-    [Input('pick_date', 'value'),Input('rsc_colors', 'data'),],
+     Output('picked_df_rwis_all', 'data'),Output('AVL_map', 'figure'),Output('process_in_background','data')],
+    [Input('pick_date', 'value'),Input('pick_date_time', 'date'),Input('rsc_colors', 'data'),Input('trigger_on_click','data')], 
 )
-def load_map(pick_date, rsc_colors):
-
+def load_map(pick_date, pick_date_time, rsc_colors, triggered):
+    print(parse(pick_date_time))
+    print(triggered)
     rsc_colors = rsc_colors
     
     if pick_date != 'Nighttime':
@@ -90,18 +181,22 @@ def load_map(pick_date, rsc_colors):
     else:
         picked_date = ''
 
+    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time))
 
-    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
+    # df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
 
     df_subs = []
-    for rsc_type in list(rsc_colors.keys()):
-        to_append = df[df['Predict'] == rsc_type]
-        if len(to_append) == 0:
-            pass
-        else:
-            df_subs.append(to_append)
+    # print
+    
+    if len(df) > 0:
+        for rsc_type in list(rsc_colors.keys()):
+            to_append = df[df['Predict'] == rsc_type]
+            if len(to_append) == 0:
+                pass
+            else:
+                df_subs.append(to_append)
 
-
+    # print("DF_SUBS",df_subs)
     avl_locations = [go.Scattermapbox(
         lon=df_sub['x'],
         lat=df_sub['y'],
@@ -150,9 +245,23 @@ def load_map(pick_date, rsc_colors):
         font_color="white"
     )
     figure = go.Figure(data=locations, layout=map_layout)
-    return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),figure]
+    # figure.add
+    # ptr = {'curveNumber': 1, 'pointNumber': 0, 'pointIndex': 0, 'lon': -93.8417, 'lat': 40.73867, 'customdata': '1_rwis_imgs_masks\\IDOT-026-00_202001191426img.jpg', 'hovertext': 'RLEI4', 'bbox': {'x0': 451.9141511111087, 'x1': 453.9141511111087, 'y0': 675.3332477751857, 'y1': 677.3332477751857}}
+    # print(figure.data)
+    # figure.add_trace(go.Scattermapbox(
+    #             lon=(-93.8417,),
+    #     lat=(40.73867,),
+    #     mode='markers',
+    #     marker={'color': rsc_colors["Full Snow Coverage"], 'size': 10, 'opacity': 1.0},
+    #     hoverinfo='text',
+    #     hovertext="AVL-DATA",
+    #     customdata=("http://cloud.iowadot.gov/Highway/Photos/Maintenance/MapSnapShots/SnowPlow/2019/1/12/A33976-2019-01-12_07_15_26.jpg",),
+    #     showlegend=True,
+    #     name="AVL-DATA"
+    # ))
+    # print(df_subs)
+    return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),figure,df['PHOTO_URL'].values]
 
-# callback for Web_link
 @app.callback(
     Output("web_link", "children"),
     [Input('AVL_map', 'clickData')],
@@ -172,7 +281,11 @@ def display_click_data(clickData):
                            'display': 'block', 'margin-left': 'auto',
                            'margin-right': 'auto',})
             else:
-                the_link = 'https://raw.githubusercontent.com/WMJason/demo-RSI/main/'+the_link.replace('\\','/')
+                if the_link.startswith("https"):
+                    the_link = the_link.replace('\\','/')#'https://raw.githubusercontent.com/WMJason/demo-RSI/main/'+the_link.replace('\\','/')
+                else:
+                    the_link = 'https://raw.githubusercontent.com/WMJason/demo-RSI/main/'+the_link.replace('\\','/')
+                    
                 return html.Img(
                     src=the_link,
                     style={'max-height': '70%', 'max-width': '70%',
@@ -182,10 +295,13 @@ def display_click_data(clickData):
 
 # callback for pie_chart
 @app.callback(
-    Output('dl_prediction', 'children'),
-    [Input('AVL_map', 'clickData'), Input('picked_df', 'data')])
+    [Output('dl_prediction', 'children'),Output('trigger_on_click', 'data')],
+    [Input('AVL_map', 'clickData'), Input('picked_df', 'data')],)
 def display_dl_prediction(clickData, df):
+    print(clickData)
+    # avl_fig = (go.Figure(avl_fig))
     if clickData is None:
+        print("AAA")
         labels = ['Please click a dot.']
         values = [1.0]
         colors = ['grey']
@@ -212,11 +328,17 @@ def display_dl_prediction(clickData, df):
                 ),
             )
         ]
-        return to_return
+        return to_return, False
     else:
+        print("BBB")
+
         # print (clickData)
         the_link = clickData['points'][0]['customdata']
+        # print("B",the_link)
+
         if the_link is None:
+            print("CCC")
+
             labels = ['There is no prediction for this photo.']
             values = [1.0]
             colors = ['grey']
@@ -243,12 +365,56 @@ def display_dl_prediction(clickData, df):
                     ),
                 )
             ]
-            return to_return
+            return to_return, False
         else:
-            if 'SnowPlow' in the_link:
+            print("DDD")
+
+            if 'SnowPlow' in the_link or 'idot_trucks' in the_link:
+                print("EEE")
                 try:
                     df = pd.DataFrame.from_dict(df)
-                    labels = list(rsc_colors.keys())
+                    # try:
+                    if df[df['PHOTO_URL'] == the_link]["LABEL"].values[0] == "Not labeled yet":
+                        print("WE AREN'T LABELLED YET")
+                        values = []
+                        labels = rsc_labels
+                        classes = getPredictForOneImage(the_link)
+                        print(classes)
+                        for label in labels:
+                            values.append(
+                                round(classes['prob_' + label], 3))
+                        colors = list(rsc_colors.values())
+
+                        fig = go.Figure(data=[
+                            go.Pie(labels=labels, values=values, hole=.4, marker={'colors': colors}, )])
+                        # to_return = [
+                        #     dbc.CardBody(
+                        #         html.Center(
+                        #             dbc.Spinner(spinner_style={"width": "5rem", "height": "5rem"},color="light")
+                        #         )
+                        #     )
+                        # ]
+                        fig.update_layout(
+                            height=300,
+                            showlegend=True,
+                            margin=dict(t=10, b=0, l=10, r=0),
+                            paper_bgcolor="#303030",
+                            plot_bgcolor="#303030",
+                            font_color="white",
+                        )
+                        
+                        print(classes)
+                        to_return = [
+                            dbc.CardBody(
+                                dcc.Graph(
+                                    id="pie_chart",
+                                    figure=fig,
+                                    config={'displayModeBar': False},
+                                ),
+                            )
+                        ]
+                        return to_return, classes        
+                    labels = rsc_labels
                     values = []
                     for label in labels:
                         values.append(
@@ -259,6 +425,8 @@ def display_dl_prediction(clickData, df):
                     # fig.update_layout(legend=dict(
                     #     orientation="h",
                     # ))
+                    
+                    
                     fig.update_layout(
                         height=300,
                         showlegend=True,
@@ -277,7 +445,9 @@ def display_dl_prediction(clickData, df):
                             ),
                         )
                     ]
-                except:
+                except Exception as e:
+                    print("EXCEPTION CALLED!!")
+                    print(e)
                     labels = ['Please click a dot.']
                     values = [1.0]
                     colors = ['grey']
@@ -304,8 +474,9 @@ def display_dl_prediction(clickData, df):
                             ),
                         )
                     ]
-                return to_return
+                return to_return, False
             else:
+                print("WHY ARE WE HERE?")
                 # print (clickData)
                 the_link = 'https://raw.githubusercontent.com/WMJason/demo-RSI/main/'+clickData['points'][0]['customdata'].replace('\\','/').replace('img.jpg','mask.jpg')
                 if the_link is None:
@@ -318,7 +489,7 @@ def display_dl_prediction(clickData, df):
                                'display': 'block', 'margin': 'auto',}
                         )
                     ]
-                    return to_return
+                    return to_return, False
 
 
 

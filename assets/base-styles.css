@@ -599,3 +599,19 @@ there.
 /* Larger than Desktop HD */
 @media (min-width: 1200px) {
 }
+
+
+.DateInput, .DateInput_1 {
+  border-radius: 4px 0 0 4px !important;
+}
+
+.DateInput_input, .DateInput_input_1 {
+  Height: 34px !important;
+  Width: 100% !important;
+  border-radius: inherit;
+}
+
+.SingleDatePickerInput__withBorder {
+  border-radius: 4px 0 0 4px;
+  border: 1px solid #ccc !important;
+}
