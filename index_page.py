@@ -170,14 +170,15 @@ def HomePage():
                                     dcc.DatePickerSingle(
                                         id="pick_date_time",
                                         min_date_allowed=date(1995, 8, 5),
-                                        max_date_allowed=date(2023, 3, 30),
+                                        max_date_allowed=date(2023, 12, 6),
                                         initial_visible_month=date(2023, 3, 30),
-                                        date=date(2023, 3, 30),
+                                        date=date(2023, 5, 4),
                                     ),
                                 ]
                             ),
                             html.Div(id="result"),
-                            dcc.Graph(id="progress_bar_graph", figure=make_progress_graph(0, 10)),
+                            html.Progress(id="progress_bar"),
+                            # dcc.Graph(id="progress_bar_graph", figure=make_progress_graph(0, 10)),
                             dbc.Card(
                                 style={'height': '39vh'},
                                 children=[
@@ -222,6 +223,7 @@ def HomePage():
                                             id="AVL_map",
                                             #figure=go.Figure(data=locations, layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
+                                            animate=True
                                         ),
                                     )
                                 ]

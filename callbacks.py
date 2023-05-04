@@ -27,7 +27,7 @@ import rsi_page
 from rsi_page import *
 import crop_cal_perc_white_black
 from crop_cal_perc_white_black import *
-from AVL_Image_URL import getPredictForOneImage
+from AVL_Image_URL import getPredictForOneImage, grab_avl_data_v2
 from dash_extensions.enrich import FileSystemCache, Trigger
 
 fsc = FileSystemCache("cache_dir")
@@ -128,40 +128,46 @@ def display_page(pathname):
 from dash.long_callback import DiskcacheLongCallbackManager
 
 import diskcache
-cache = diskcache.Cache("./cache")
+cache = diskcache.Cache("./cache5")
 background_callback_manager = DiskcacheLongCallbackManager(cache)
-# @app.long_callback(
-#     output=Output("result", "children"),
-#     inputs=Input("process_in_background", "data"),
-#     background=True,
-#     running=[
-#         (
-#             Output("result", "style"),
-#             {"visibility": "hidden"},
-#             {"visibility": "visible"},
-#         ),
-#         (
-#             Output("progress_bar", "style"),
-#             {"visibility": "visible"},
-#             {"visibility": "hidden"},
-#         ),
-#     ],
-#     manager=background_callback_manager,
-#     progress=[Output("progress_bar", "value"), Output("progress_bar", "max")],
-#     # progress_default=make_progress_graph(0, 10),
-#     prevent_initial_call=True
-# )
-# def run_calculation(set_progress,data):
-#     # print(set_progress)
-#     if data == None:
-#         raise PreventUpdate
-#     for i,url in enumerate(data):
-#         getPredictForOneImage(url)
-#         print(i)
-#         set_progress((str(i), str(len(data))))
+@app.long_callback(
+    output=Output("result", "children"),
+    inputs=Input("process_in_background", "data"),
+    background=True,
+    running=[
+        (
+            Output("result", "style"),
+            {"visibility": "hidden"},
+            {"visibility": "visible"},
+        ),
+        (
+            Output("progress_bar", "style"),
+            {"visibility": "visible"},
+            {"visibility": "hidden"},
+        ),
+    ],
+    manager=background_callback_manager,
+    progress=[Output("progress_bar", "value"), Output("progress_bar", "max")],
+    # progress_default=make_progress_graph(0, 10),
+    prevent_initial_call=True
+)
+def run_calculation(set_progress,data):
+    # print(set_progress)
+    if data == None or len(data)==0:
+        set_progress(('1','1'))
+        return "done"
 
-#         # fsc.set("progress",str(i))
-#     return "done"
+    print(data)
+    BATCH_SIZE = 32
+    for i in range(0,len(data),BATCH_SIZE):
+        grab_avl_data_v2(data[i:i+BATCH_SIZE])
+        # getPredictForOneImage(url)
+        print(i)
+        set_progress((str(i), str(len(data))))
+
+        # fsc.set("progress",str(i))
+    set_progress(('1','1'))
+    return "done"
 
 #callback for the AVL points map
 #to determine the file
@@ -169,9 +175,11 @@ background_callback_manager = DiskcacheLongCallbackManager(cache)
     #Output('dd-output-container', 'children'),
     [Output('picked_df', 'data'),Output('picked_df_rwis', 'data'),Output('picked_df_unknown', 'data'),
      Output('picked_df_rwis_all', 'data'),Output('AVL_map', 'figure'),Output('process_in_background','data')],
-    [Input('pick_date', 'value'),Input('pick_date_time', 'date'),Input('rsc_colors', 'data'),Input('trigger_on_click','data')], 
+    [Input('pick_date', 'value'),Input('pick_date_time', 'date'),Input('rsc_colors', 'data'),Input('trigger_on_click','data')],
+    [State('AVL_map', 'figure')] 
 )
-def load_map(pick_date, pick_date_time, rsc_colors, triggered):
+def load_map(pick_date, pick_date_time, rsc_colors, triggered, prev_fig):
+    print(prev_fig)
     print(parse(pick_date_time))
     print(triggered)
     rsc_colors = rsc_colors
@@ -247,7 +255,21 @@ def load_map(pick_date, pick_date_time, rsc_colors, triggered):
     figure = go.Figure(data=locations, layout=map_layout)
     # figure.add
     # ptr = {'curveNumber': 1, 'pointNumber': 0, 'pointIndex': 0, 'lon': -93.8417, 'lat': 40.73867, 'customdata': '1_rwis_imgs_masks\\IDOT-026-00_202001191426img.jpg', 'hovertext': 'RLEI4', 'bbox': {'x0': 451.9141511111087, 'x1': 453.9141511111087, 'y0': 675.3332477751857, 'y1': 677.3332477751857}}
-    # print(figure.data)
+    # print(prev_fig)
+    if prev_fig != None:
+        for x in range(len(figure.data)):
+            prev_fig['data'][x]['customdata']=figure.data[x].customdata
+            prev_fig['data'][x]['hoverinfo']=figure.data[x].hoverinfo
+            prev_fig['data'][x]['hovertext']=figure.data[x].hovertext
+            prev_fig['data'][x]['lat']=figure.data[x].lat
+            prev_fig['data'][x]['lon']=figure.data[x].lon
+            prev_fig['data'][x]['marker']=figure.data[x].marker
+            prev_fig['data'][x]['mode']=figure.data[x].mode
+            prev_fig['data'][x]['name']=figure.data[x].name
+            prev_fig['data'][x]['showlegend']=figure.data[x].showlegend
+            prev_fig['data'][x]['type']=figure.data[x].type
+        figure = prev_fig
+    # print(figure.data[0].customdata)
     # figure.add_trace(go.Scattermapbox(
     #             lon=(-93.8417,),
     #     lat=(40.73867,),
@@ -259,8 +281,9 @@ def load_map(pick_date, pick_date_time, rsc_colors, triggered):
     #     showlegend=True,
     #     name="AVL-DATA"
     # ))
-    # print(df_subs)
-    return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),figure,df['PHOTO_URL'].values]
+    # print(df[df['Predict'] == "Not labeled yet"]['PHOTO_URL'].values)
+
+    return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),figure,df[df['Predict'] == "Not labeled yet"]['PHOTO_URL'].values]
 
 @app.callback(
     Output("web_link", "children"),
