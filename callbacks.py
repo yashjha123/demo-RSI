@@ -189,7 +189,7 @@ def load_map(pick_date, pick_date_time, rsc_colors, triggered, prev_fig):
     else:
         picked_date = ''
 
-    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time))
+    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time)) # TODO:
 
     # df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
 
@@ -198,7 +198,7 @@ def load_map(pick_date, pick_date_time, rsc_colors, triggered, prev_fig):
     
     if len(df) > 0:
         for rsc_type in list(rsc_colors.keys()):
-            to_append = df[df['Predict'] == rsc_type]
+            to_append = df[df['Predict'] == rsc_type] # groups by category (AVL)
             if len(to_append) == 0:
                 pass
             else:
@@ -234,7 +234,7 @@ def load_map(pick_date, pick_date_time, rsc_colors, triggered, prev_fig):
         hoverinfo='text',
         hovertext=df_sub['stid'],
         customdata=df_sub['img_path'],
-        name='RWIS-'+df_sub['RSC'].iloc[0],
+        name='RWIS-'+df_sub['RSC'].iloc[0], # iloc grabs element at first index 
     ) for df_sub in df_rwis_subs]
 
     locations = avl_locations + rwis_locations
@@ -283,7 +283,7 @@ def load_map(pick_date, pick_date_time, rsc_colors, triggered, prev_fig):
     # ))
     # print(df[df['Predict'] == "Not labeled yet"]['PHOTO_URL'].values)
 
-    return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),figure,df[df['Predict'] == "Not labeled yet"]['PHOTO_URL'].values]
+    return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(), figure, df[df['Predict'] == "Not labeled yet"]['PHOTO_URL'].values]
 
 @app.callback(
     Output("web_link", "children"),
@@ -304,8 +304,9 @@ def display_click_data(clickData):
                            'display': 'block', 'margin-left': 'auto',
                            'margin-right': 'auto',})
             else:
+                # print('check')
                 if the_link.startswith("https"):
-                    the_link = the_link.replace('\\','/')#'https://raw.githubusercontent.com/WMJason/demo-RSI/main/'+the_link.replace('\\','/')
+                    the_link = the_link.replace('\\','/') #'https://raw.githubusercontent.com/WMJason/demo-RSI/main/'+the_link.replace('\\','/')
                 else:
                     the_link = 'https://raw.githubusercontent.com/WMJason/demo-RSI/main/'+the_link.replace('\\','/')
                     
@@ -601,9 +602,11 @@ def plot_semi_fig(semi_model, semi_nugget, semi_range, semi_sill,maxlag,n_lags,d
     [State('semi-model', 'value'),
      State('semi-nugget', 'value'),
      State('semi-range', 'value'),
-     State('semi-sill', 'value')], )
-def update_rsi_map(n_clicks, updated_df, df_unknowns, semi_model, semi_nugget, semi_range, semi_sill):
+     State('semi-sill', 'value'),
+     State('picked_df_rwis', 'data')], )
+def update_rsi_map(n_clicks, updated_df, df_unknowns, semi_model, semi_nugget, semi_range, semi_sill, df_rwis):
     updated_df = pd.DataFrame.from_dict(updated_df)
+    df_rwis = pd.DataFrame.from_dict(df_rwis) # 
     rsi_locations = [go.Scattermapbox(
         lon=updated_df['x'],
         lat=updated_df['y'],

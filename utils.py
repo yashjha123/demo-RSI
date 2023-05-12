@@ -4,7 +4,7 @@ import copy
 import math
 
 import pandas as pd
-from AVL_Image_URL import get_cameras, grab_avl_data, checkcache
+from AVL_Image_URL import get_cameras, grab_avl_data, checkcache, get_rwis_cameras, checkrwiscache
 
 from datetime import date
 import datetime
@@ -30,12 +30,14 @@ def load_data(picked_date_time):
     # df = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test'+picked_date+'.csv')
     time = (picked_date_time).strftime("%Y-%m-%dT%H:%M")
     d = checkcache(get_cameras("400",time))
+    all = checkrwiscache(get_rwis_cameras("400",time))
     # print(d)
     df = pd.DataFrame(d)
-    
-    df_rwis = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/RWIS_locs.csv")
-    df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv')
-    df_rwis_all = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/2_obtain_rsi_for_imgs.csv")
+    df_rwis_all = pd.DataFrame(all)
+    # template/preset data for initial demorsi - remove/replace when RWIS is automated
+    df_rwis = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/RWIS_locs.csv") # ask whats going on here...
+    df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv') # unknown RWIS data (location, time, for interpolation)
+    # df_rwis_all = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/2_obtain_rsi_for_imgs.csv") # prediction mask url + estimate ratio + classification
     return df, df_rwis, df_unknown, df_rwis_all
 
 

@@ -223,7 +223,7 @@ def HomePage():
                                             id="AVL_map",
                                             #figure=go.Figure(data=locations, layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
-                                            animate=True
+                                            # animate=True
                                         ),
                                     )
                                 ]
