@@ -198,10 +198,10 @@ def HomePage():
                                     ),
                                     dbc.CardBody(
                                         id = "dl_prediction",
-                                        children=[dcc.Graph(
+                                        children=[dcc.Loading(dcc.Graph(
                                             id="pie_chart",
                                             config={'displayModeBar': False},
-                                        ),],
+                                        )),],
                                     )
                                 ]
                             ),
@@ -225,12 +225,12 @@ def HomePage():
                                             dbc.Progress(id="progress_bar", animated=True, striped=True,value=100,color="success"),
                                             html.Button(id="cancel_button_id", disabled=True, children="Cancel Running Job!"),
                                         ], id='while_loading'),
-                                        dcc.Graph(
+                                        dcc.Loading(dcc.Graph(
                                             id="AVL_map",
                                             #figure=go.Figure(data=locations, layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
                                             # animate=True
-                                        ),]
+                                        )),]
                                     )
                                 ]
                             ),
@@ -250,5 +250,5 @@ app.layout = PageLayout()
 
 ##----------------------------------------------------------
 if __name__ == "__main__":
-    app.run_server(debug=True,host='0.0.0.0',port=8050)
+    app.run_server(debug=False,host='0.0.0.0',port=8050)
 

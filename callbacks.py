@@ -17,7 +17,7 @@ from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
 # from dash.exceptions import PreventDefault
-from dash.dependencies import Input, Output, State
+# from dash.dependencies import Input, Output, State
 from utils import *
 import utils
 from app import app
@@ -28,7 +28,7 @@ from rsi_page import *
 import crop_cal_perc_white_black
 from crop_cal_perc_white_black import *
 from AVL_Image_URL import getPredictForOneImage, grab_avl_data_v2
-# from dash_extensions.enrich import FileSystemCache, Trigger
+from dash_extensions.enrich import Input, Output, State, FileSystemCache, Trigger, ServersideOutput
 
 
 mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
@@ -121,9 +121,10 @@ def display_page(pathname):
 #         return "Not started yet!"
 #     return "Progress is {:.0f}%".format(float(fsc.get("progress")) * 100)
 
+
 def tuple_append(tup,elem):
     return tuple(list(tup)+[(elem)])
-@app.long_callback(
+@app.callback(
     output=Output("result", "children"),
     inputs=[Input("process_in_background", "data"),State('AVL_map', 'figure'),State('pick_date', 'value')],
     running=[
@@ -149,7 +150,8 @@ def tuple_append(tup,elem):
         ),
         (Output("cancel_button_id", "disabled"), False, True),
     ],
-    cancel=[Input("cancel_button_id", "n_clicks")],
+    background=True,
+    cancel=[Input("cancel_button_id", "n_clicks"),Input('pick_date_time', 'date')],
     prevent_initial_call=True,
     progress=[Output("progress_bar", "value") ,Output('AVL_map', 'figure')],
 )
@@ -255,17 +257,13 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
     # set_progress(('1','1'))
     return "Done"
 
-from dash_extensions.callback import CallbackCache
-from flask_caching.backends import FileSystemCache
-
-cc = CallbackCache(cache=FileSystemCache(cache_dir="allnewcache"))
 
 #callback for the AVL points map
 #to determine the file
-cc.callback(
+@app.callback(
     #Output('dd-output-container', 'children'),
     [Output('picked_df', 'data'),Output('picked_df_rwis', 'data'),Output('picked_df_unknown', 'data'),
-     Output('picked_df_rwis_all', 'data'),Output('AVL_map', 'figure'),Output('process_in_background','data')],
+     Output('picked_df_rwis_all', 'data'),Output('AVL_map', 'figure'),ServersideOutput('process_in_background','data')],
     [Input('pick_date', 'value'),Input('pick_date_time', 'date'),Input('rsc_colors', 'data'),Input('trigger_on_click','data')],
     [State('AVL_map', 'figure')] 
 )
