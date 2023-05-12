@@ -8,8 +8,8 @@ from random import randint, shuffle
 import pandas as pd
 import plotly.graph_objs as go
 import dash
-import dash_html_components as html
-import dash_core_components as dcc
+from dash import dcc
+from dash import html
 import dash_bootstrap_components as dbc
 
 from dash.dependencies import Input, Output

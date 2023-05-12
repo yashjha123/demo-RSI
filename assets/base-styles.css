@@ -615,3 +615,15 @@ there.
   border-radius: 4px 0 0 4px;
   border: 1px solid #ccc !important;
 }
+
+#while_loading {
+  display: flex;
+  align-items: center;
+}
+#progress_bar {
+  margin: 5px;
+  flex: 1;
+}
+.progress-bar{
+  height: 100%;
+}

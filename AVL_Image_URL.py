@@ -61,7 +61,7 @@ def checkcache(results):
     result_dict = (r.json())['result']
     for data in results['data']:
         if result_dict[data['imgurl']] == "None":
-            print("What happened?")
+            # print("What happened?")
             dashcam = {
                 # 'name':data['cid'],
                 # 'date':data['utc_valid'],
@@ -176,7 +176,7 @@ def grab_avl_data(results):
         data = {"img_urls": img_urls}
         r = requests.post(url, json=data)
         result = (r.json())['result']
-        print(result)
+        # print(result)
         result_dict.update(result)
 
     for data in tqdm(results['data']):
@@ -204,7 +204,7 @@ def grab_avl_data(results):
     return dashcams
 
 
-def grab_avl_data_v2(img_urls):
+def grab_avl_data_v2(todo):
     """
     Processes JSON to grab AVL specific data
     Output: [{Name, Date, Lat, Long, Camera Url},...]
@@ -215,40 +215,45 @@ def grab_avl_data_v2(img_urls):
 
     url = ("http://127.0.0.1:8080/predictBatchesV2")
     # print(results['data'])
-    print(img_urls)
+    # print("IMG URLS",img_urls)
     # BATCH_SIZE = 20
     # for i in tqdm(range(0,len(results))):
     #     img_urls = [x['imgurl'] for x in results['data'][i:i+BATCH_SIZE]]
     #     # print(img_urls)
+    img_urls = []
+    for x in todo:
+        # print(x)
+        img_urls.append(x['imgurl'])
     data = {"img_urls": img_urls}
     r = requests.post(url, json=data)
     result = (r.json())['result']
-    print(result)
+    # return (result)
     # result_dict.update(result)
-
-    # for data in tqdm(img_urls):
+    i = 0
+    for img_url in tqdm(result.keys()):
         
     #     # inp = random.choice(['Full Snow Coverage','Partly Snow Coverage','Bare'])
     #     # res = requests.get(AVL_RULE+data['imgurl']).json()["result"]
-    #     res = result_dict[data['imgurl']]
-    #     inp = getLabel(res)
-    #     dashcam = {
-    #         # 'name':data['cid'],
-    #         # 'date':data['utc_valid'],
-    #         'Predict': inp,
-    #         'LABEL': inp,
-    #         'x':data['lon'],    
-    #         'y':data['lat'],
-    #         'PHOTO_URL':data['imgurl'],
-    #         'prob_Bare': res[0],
-    #         'prob_Partly Snow Coverage': res[1],
-    #         'prob_Undefined': res[2],
-    #         'prob_Full Snow Coverage': res[3],
-    #         "RSI": 0.4 #BUG
-    #     }
-    #     dashcams.append(dashcam)
+        res = result[img_url]
+        inp = getLabel(res)
+        dashcam = {
+            # 'name':data['cid'],
+            # 'date':data['utc_valid'],
+            'Predict': inp,
+            'LABEL': inp,
+            'x':todo[i]['lon'],    
+            'y':todo[i]['lat'],
+            'PHOTO_URL':todo[i]['imgurl'],
+            'prob_Bare': res[0],
+            'prob_Partly Snow Coverage': res[1],
+            'prob_Undefined': res[2],
+            'prob_Full Snow Coverage': res[3],
+            "RSI": 0.4 #BUG
+        }
+        dashcams.append(dashcam)
+        i+=1
 
-    # return dashcams
+    return dashcams
 
 
 def getPredictForOneImage(img_url):

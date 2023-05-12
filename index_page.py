@@ -7,8 +7,8 @@ from datetime import date
 import pandas as pd
 import plotly.graph_objs as go
 import dash
-import dash_html_components as html
-import dash_core_components as dcc
+from dash import dcc
+from dash import html
 import dash_bootstrap_components as dbc
 
 from dash.dependencies import Input, Output
@@ -176,8 +176,6 @@ def HomePage():
                                     ),
                                 ]
                             ),
-                            html.Div(id="result"),
-                            html.Progress(id="progress_bar"),
                             # dcc.Graph(id="progress_bar_graph", figure=make_progress_graph(0, 10)),
                             dbc.Card(
                                 style={'height': '39vh'},
@@ -200,10 +198,10 @@ def HomePage():
                                     ),
                                     dbc.CardBody(
                                         id = "dl_prediction",
-                                        children=[dcc.Graph(
+                                        children=[dcc.Loading(dcc.Graph(
                                             id="pie_chart",
                                             config={'displayModeBar': False},
-                                        ),],
+                                        )),],
                                     )
                                 ]
                             ),
@@ -214,21 +212,34 @@ def HomePage():
                         md=8,
                         children=[
                             dbc.Card(
+                                id="col-id",
                                 children=[
                                     dbc.CardHeader(
                                         "Real-Time AVL Locations"
                                     ),
+                                    
                                     dbc.CardBody(
-                                        dcc.Graph(
+                                        [html.Div(id="result"),
+                                         html.Div([
+                                            dbc.Spinner(size="me-1", id="spinner_loader"),
+                                            dbc.Progress(id="progress_bar", animated=True, striped=True,value=100,color="success"),
+                                            html.Button(id="cancel_button_id", disabled=True, children="Cancel Running Job!"),
+                                        ], id='while_loading'),
+                                        dcc.Loading(dcc.Graph(
                                             id="AVL_map",
                                             #figure=go.Figure(data=locations, layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
                                             # animate=True
+<<<<<<< HEAD
                                         ),
+=======
+                                        )),]
+>>>>>>> avl-done
                                     )
                                 ]
                             ),
                             html.Br(),
+                            
                         ],
                     ),
                 ]
