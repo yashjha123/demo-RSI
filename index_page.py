@@ -10,6 +10,7 @@ import dash
 from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
+import dash_datetimepicker
 
 from dash.dependencies import Input, Output
 
@@ -151,29 +152,41 @@ def HomePage():
                         md=4,
                         children=[
                             dbc.Card(
-                                style={'height': '5vh'},
+                                # style={'height': '5vh'},
                                 children=[
-                                    dcc.Dropdown(
-                                        id="pick_date",
-                                        options=[
-                                            {"label": 'Nighttime AVL', "value": 'Nighttime'},
-                                            {"label": 'Daytime AVL', "value": 'Daytime'},
-                                        ],
-                                        value='Nighttime',
+                                    # dcc.DatePickerSingle(
+                                    #     id="pick_date_time",
+                                    #     min_date_allowed=date(1995, 8, 5),
+                                    #     max_date_allowed=date(2023, 12, 6),
+                                    #     initial_visible_month=date(2023, 3, 30),
+                                    #     date=date(2023, 5, 4),
+                                    # ),
+                                    dcc.Input(
+                                        id="pick_date_time",
+                                        type="datetime-local",
+                                        step="1",
+                                        value=date.strftime(date.today(), "%Y-%m-%dT%H:%M"),
                                     ),
-                                    html.Div(id='dd-output-container'),
                                 ]
                             ),
                             dbc.Card(
-                                # style={'height': '5vh'},
+                                style={'height': '5vh',
+                                       'padding-top': '1vh',
+                                       'margin-bottom': '1vh'},
                                 children=[
-                                    dcc.DatePickerSingle(
-                                        id="pick_date_time",
-                                        min_date_allowed=date(1995, 8, 5),
-                                        max_date_allowed=date(2023, 12, 6),
-                                        initial_visible_month=date(2023, 3, 30),
-                                        date=date(2023, 5, 4),
+                                    dcc.Slider(0, 720,
+                                        step=None,
+                                        marks={
+                                            30: '1h',
+                                            90: '3h',
+                                            180: '6h',
+                                            360: '12h',
+                                            720: '24h'
+                                        },
+                                        value=30,
+                                        id="slider"
                                     ),
+                                    html.Div(id='dd-output-container'), # TODO: determine if continuous or discrete slider is better
                                 ]
                             ),
                             # dcc.Graph(id="progress_bar_graph", figure=make_progress_graph(0, 10)),

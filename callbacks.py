@@ -264,22 +264,17 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
     #Output('dd-output-container', 'children'),
     [Output('picked_df', 'data'),Output('picked_df_rwis', 'data'),Output('picked_df_unknown', 'data'),
      Output('picked_df_rwis_all', 'data'),Output('AVL_map', 'figure'),ServersideOutput('process_in_background','data')],
-    [Input('pick_date', 'value'),Input('pick_date_time', 'date'),Input('rsc_colors', 'data')],
+    [Input('slider', 'value'),Input('pick_date_time', 'value'),Input('rsc_colors', 'data')],
     [State('AVL_map', 'figure')] 
 )
-def load_map(pick_date, pick_date_time, rsc_colors, prev_fig):
+def load_map(window, pick_date_time, rsc_colors, prev_fig):
     # print(prev_fig)
-
+    print(pick_date_time)
     # print(parse(pick_date_time))
     # print(triggered)
     rsc_colors = rsc_colors
-    
-    if pick_date != 'Nighttime':
-        picked_date = '2'
-    else:
-        picked_date = ''
 
-    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time)) # TODO:
+    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time), window) # TODO:
 
     # df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
 
