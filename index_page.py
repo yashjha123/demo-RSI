@@ -230,11 +230,7 @@ def HomePage():
                                             #figure=go.Figure(data=locations, layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
                                             # animate=True
-<<<<<<< HEAD
-                                        ),
-=======
                                         )),]
->>>>>>> avl-done
                                     )
                                 ]
                             ),

@@ -3,6 +3,14 @@ An algorithm to automatically obtain AVL image urls to be used in a html-based w
 Code: Michael Urbiztondo
 """
 
+from shapely.geometry import Polygon, LineString, Point
+
+import geopandas as gpd
+import shapely
+
+both_highways = gpd.read_file("maps/0_merged_I35_I80_pro_buffer20.shp") # in-built CRS 'epsg:26915'
+both_highways = (both_highways.to_crs('EPSG:4326'))
+
 import requests
 from datetime import date
 
@@ -49,7 +57,8 @@ def getLabel(result):
     labels =['Bare','Partly Snow Coverage','Undefined','Full Snow Coverage']
     return labels[result.index(max(result))]
 
-def checkcache(results):
+def checkcache(results, filter = True):
+    global both_highways
     img_urls = []
     for d in results['data']:
         img_urls.append(d['imgurl'])
@@ -60,6 +69,13 @@ def checkcache(results):
     r = requests.post(url, json=data)
     result_dict = (r.json())['result']
     for data in results['data']:
+
+        if filter:
+            point = Point(data['lon'],data['lat'])
+            distances = (shapely.distance(point,both_highways.geometry) < 0.002)
+            if (distances[0] or distances[1]) == False:
+                continue
+
         if result_dict[data['imgurl']] == "None":
             # print("What happened?")
             dashcam = {
@@ -98,7 +114,7 @@ def checkcache(results):
 
 import pandas as pd
 
-def checkrwiscache(results):
+def checkrwiscache(results, filter=True):
     """ 
     Modification of checkcache to work with RWIS API
     # TODO: Modify dashcam keys/columns to the same format seen in callbacks.py: line 222, 228-238
@@ -122,13 +138,23 @@ def checkrwiscache(results):
     # r = requests.post(url, json=data)
     # result_dict = (r.json())['result']
     for i, data in enumerate(results['data']):
-        print(data)
+        # print(data)
+
+        
         # TODO: Convert NWS ID to cid format (or vice versa), using github repo code 
         # - even better: add a column with all the respective cids or whatever into 0_RWIS_GPS_data.csv
         rwis_row = rwis_stations[rwis_stations['cid'] == data['cid']].values
         if len(rwis_row) == 0:
             continue
         rwis_row = rwis_row[0]
+
+        if filter:
+            point = Point(rwis_row[1],rwis_row[0])
+            distances = (shapely.distance(point,both_highways.geometry) < 0.002)
+            # print(point)
+            # print(distances)
+            if (distances[0] or distances[1]) == False:
+                continue
         # if result_dict[data['imgurl']] == "None":
         #     print("What happened?")
         #     dashcam = {

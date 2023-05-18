@@ -29,10 +29,10 @@ def load_data(picked_date_time):
     # df = pd.read_csv("1_predicted_I35N_down_2019  -01-12_07.csv")
     # df = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test'+picked_date+'.csv')
     time = (picked_date_time).strftime("%Y-%m-%dT%H:%M")
-    d = checkcache(get_cameras("400",time))
+    avl_data = checkcache(get_cameras("400",time))
     all = checkrwiscache(get_rwis_cameras("400",time))
     # print(d)
-    df = pd.DataFrame(d)
+    df = pd.DataFrame(avl_data)
     df_rwis_all = pd.DataFrame(all)
     # template/preset data for initial demorsi - remove/replace when RWIS is automated
     df_rwis = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/RWIS_locs.csv") # ask whats going on here...

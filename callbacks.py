@@ -264,10 +264,10 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
     #Output('dd-output-container', 'children'),
     [Output('picked_df', 'data'),Output('picked_df_rwis', 'data'),Output('picked_df_unknown', 'data'),
      Output('picked_df_rwis_all', 'data'),Output('AVL_map', 'figure'),ServersideOutput('process_in_background','data')],
-    [Input('pick_date', 'value'),Input('pick_date_time', 'date'),Input('rsc_colors', 'data'),Input('trigger_on_click','data')],
+    [Input('pick_date', 'value'),Input('pick_date_time', 'date'),Input('rsc_colors', 'data')],
     [State('AVL_map', 'figure')] 
 )
-def load_map(pick_date, pick_date_time, rsc_colors, triggered, prev_fig):
+def load_map(pick_date, pick_date_time, rsc_colors, prev_fig):
     # print(prev_fig)
 
     # print(parse(pick_date_time))

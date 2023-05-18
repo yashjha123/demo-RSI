@@ -627,3 +627,11 @@ there.
 .progress-bar{
   height: 100%;
 }
+
+button{
+  color: white !important;
+}
+
+.button{
+  color: white !important;
+}
