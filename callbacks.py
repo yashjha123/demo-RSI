@@ -126,7 +126,7 @@ def tuple_append(tup,elem):
     return tuple(list(tup)+[(elem)])
 @app.callback(
     output=Output("result", "children"),
-    inputs=[Input("process_in_background", "data"),State('AVL_map', 'figure'),State('pick_date', 'value')],
+    inputs=[Input("process_in_background", "data"),State('AVL_map', 'figure'),State('pick_date_time', 'value')],
     running=[
         (
             Output("result", "style"),
@@ -274,7 +274,7 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
     # print(triggered)
     rsc_colors = rsc_colors
 
-    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time), window) # TODO:
+    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time)) # TODO:
 
     # df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
 

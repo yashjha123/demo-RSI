@@ -129,15 +129,14 @@ def checkrwiscache(results, filter=True):
                     imgurl = d[key]
                     break
         img_urls.append(imgurl)
-        # TODO: deal with completely null case (all imgurls null)
-        # Not sure if we null data should be stored
+
     dashcams = []
     # TODO: -v uncomment this for caching implementation
-    # url = ("http://127.0.0.1:8080/loadFromRWISCache")
+    url = ("http://127.0.0.1:8080/snow_estimate")
     # data = {"img_urls": img_urls}
     # r = requests.post(url, json=data)
     # result_dict = (r.json())['result']
-    for i, data in enumerate(results['data']):
+    for i, data in tqdm(enumerate(results['data'])):
         # print(data)
 
         
@@ -172,12 +171,35 @@ def checkrwiscache(results, filter=True):
         # TODO: uncomment below -v :(
         # res = result_dict[data['imgurl']]
         # inp = getLabel(res)
+
+        data1 = {"img_url": img_urls[i]}
+
+        r = requests.post(url, json=data1) 
+        result_dicte = (r.json())['result']
+        estimate_ratio = result_dicte['estimate_ratio']
+        print(estimate_ratio)
+        # estimate_ratio = 0.6
+        # Todo: conversion of estimate ratio to rsi ranges
+        # bare: 0.8-1.0
+        # part snow: 0.5-0.8
+        # full: 0.2-0.5
+        if estimate_ratio >= 0.8:
+            category = 'Bare'
+        elif estimate_ratio >= 0.5:
+            category = 'Partly Snow Coverage'
+        else:
+            category = 'Full Snow Coverage'
+
+        # TODO: add option to see generated mask
+        # interpret image from binary data
+        # optimize rwis ml function
+
         dashcam = {
             'stid': data['cid'],
             'lon':rwis_row[1],    
             'lat':rwis_row[0],
             'img_path':img_urls[i],
-            'RSC': 'Bare', # Predicted category
+            'RSC': category, # Predicted category
             "RSI": 0.4 #BUG
         }
         dashcams.append(dashcam)
