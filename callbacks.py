@@ -260,6 +260,7 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
 
 #callback for the AVL points map
 #to determine the file
+# TODO: update for toggleable filter button
 @app.callback(
     #Output('dd-output-container', 'children'),
     [Output('picked_df', 'data'),Output('picked_df_rwis', 'data'),Output('picked_df_unknown', 'data'),
@@ -317,7 +318,7 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
         marker={'color': rsc_colors[df_sub['RSC'].iloc[0]], 'size': 20, 'opacity': 0.8,},
         showlegend=True,
         hoverinfo='text',
-        hovertext=df_sub['stid'],
+        hovertext= df_sub['stid+RSI'],
         customdata=df_sub['img_path'],
         name='RWIS-'+df_sub['RSC'].iloc[0], # iloc grabs element at first index 
     ) for df_sub in df_rwis_subs]
@@ -393,7 +394,7 @@ def display_click_data(clickData):
         if the_link is None:
             return 'No Photo Available'
         else:
-            if 'SnowPlow' in the_link:
+            if type(the_link) == str:
                 return html.Img(
                     src=the_link,
                     style={'max-height': '90%', 'max-width': '90%',
@@ -401,13 +402,9 @@ def display_click_data(clickData):
                            'margin-right': 'auto',})
             else:
                 # print('check')
-                if the_link.startswith("https"):
-                    the_link = the_link.replace('\\','/') #'https://raw.githubusercontent.com/WMJason/demo-RSI/main/'+the_link.replace('\\','/')
-                else:
-                    the_link = 'https://raw.githubusercontent.com/WMJason/demo-RSI/main/'+the_link.replace('\\','/')
                     
                 return html.Img(
-                    src=the_link,
+                    src=the_link[0],
                     style={'max-height': '70%', 'max-width': '70%',
                            'display': 'block', 'margin-left': 'auto',
                            'margin-right': 'auto',},)
@@ -598,15 +595,21 @@ def display_dl_prediction(clickData, df):
             else:
                 print("WHY ARE WE HERE?")
                 # print (clickData)
-                the_link = 'https://raw.githubusercontent.com/WMJason/demo-RSI/main/'+clickData['points'][0]['customdata'].replace('\\','/').replace('img.jpg','mask.jpg')
+                the_link = clickData['points'][0]['customdata']
+                # https://raw.githubusercontent.com/WMJason/demo-RSI/main/https:/mesonet.agron.iastate.edu/archive/data/2023/05/02/camera/IDOT-030-00/IDOT-030-00_202305022358.jpg
                 if the_link is None:
                     return 'No Mask Available'
                 else:
                     to_return = [
                         html.Img(
-                        src=the_link,
+                        src=the_link[1],
                         style={'max-height': '70%', 'max-width': '70%',
-                               'display': 'block', 'margin': 'auto',}
+                               'display': 'inline-block', 'margin': 'auto',}
+                        ),
+                        html.Img(
+                        src=the_link[2],
+                        style={'max-height': '70%', 'max-width': '70%',
+                               'display': 'inline-block', 'margin': 'auto',}
                         )
                     ]
                     return to_return, False

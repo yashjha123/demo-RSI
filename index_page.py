@@ -211,6 +211,7 @@ def HomePage():
                                     ),
                                     dbc.CardBody(
                                         id = "dl_prediction",
+                                        style = {'display': 'flex'},
                                         children=[dcc.Loading(dcc.Graph(
                                             id="pie_chart",
                                             config={'displayModeBar': False},

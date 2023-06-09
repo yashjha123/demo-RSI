@@ -121,14 +121,6 @@ def checkrwiscache(results, filter=True):
     # IDOT-072: should be undefined case
     """
     rwis_stations = pd.read_csv('0_RWIS_GPS_data_mod.csv')
-    img_urls = []
-    for d in results['data']:
-        for key in d.keys():
-            if key.startswith('imgurl'):
-                if d[key] is not None:
-                    imgurl = d[key]
-                    break
-        img_urls.append(imgurl)
 
     dashcams = []
     # TODO: -v uncomment this for caching implementation
@@ -136,12 +128,12 @@ def checkrwiscache(results, filter=True):
     # data = {"img_urls": img_urls}
     # r = requests.post(url, json=data)
     # result_dict = (r.json())['result']
-    for i, data in tqdm(enumerate(results['data'])):
-        # print(data)
 
-        
-        # TODO: Convert NWS ID to cid format (or vice versa), using github repo code 
-        # - even better: add a column with all the respective cids or whatever into 0_RWIS_GPS_data.csv
+    filtered_data = []
+    img_urls = []
+
+    for i, data in tqdm(enumerate(results['data'])):
+
         rwis_row = rwis_stations[rwis_stations['cid'] == data['cid']].values
         if len(rwis_row) == 0:
             continue
@@ -150,39 +142,37 @@ def checkrwiscache(results, filter=True):
         if filter:
             point = Point(rwis_row[1],rwis_row[0])
             distances = (shapely.distance(point,both_highways.geometry) < 0.002)
-            # print(point)
-            # print(distances)
             if (distances[0] or distances[1]) == False:
                 continue
-        # if result_dict[data['imgurl']] == "None":
-        #     print("What happened?")
-        #     dashcam = {
-        #         # 'name':data['cid'],
-        #         # 'date':data['utc_valid'],
-        #         'Predict': "Not labeled yet",
-        #         'LABEL': "Not labeled yet",
-        #         'x':data['lon'],    
-        #         'y':data['lat'],
-        #         'PHOTO_URL':data['imgurl'],
-        #         "RSI": 0.4 #BUG
-        #     }
-        #else:
+        filtered_data.append(data)
+    
+        for key in data.keys():
+            if key.startswith('imgurl'):
+                if data[key] is not None:
+                    imgurl = data[key]
+                    break
+        img_urls.append(imgurl)
 
-        # TODO: uncomment below -v :(
-        # res = result_dict[data['imgurl']]
-        # inp = getLabel(res)
+    data1 = {"img_urls": img_urls}
 
-        data1 = {"img_url": img_urls[i]}
+    r = requests.post(url, json=data1) 
+    result_dicte = (r.json())['result']
+    estimate_ratios = result_dicte['estimate_ratio']
+    img_gen_masks = result_dicte['img_gen_masks']
+    img_src_masks = result_dicte['img_src_masks']
+    print(estimate_ratios)
 
-        r = requests.post(url, json=data1) 
-        result_dicte = (r.json())['result']
-        estimate_ratio = result_dicte['estimate_ratio']
-        print(estimate_ratio)
-        # estimate_ratio = 0.6
-        # Todo: conversion of estimate ratio to rsi ranges
+    for i, data in tqdm(enumerate(filtered_data)):
+        rwis_row = rwis_stations[rwis_stations['cid'] == data['cid']].values
+        if len(rwis_row) == 0:
+            continue
+        rwis_row = rwis_row[0]
+
+        # TODO: conversion of estimate ratio to rsi ranges
         # bare: 0.8-1.0
         # part snow: 0.5-0.8
         # full: 0.2-0.5
+        estimate_ratio = estimate_ratios[i]
         if estimate_ratio >= 0.8:
             category = 'Bare'
         elif estimate_ratio >= 0.5:
@@ -198,9 +188,10 @@ def checkrwiscache(results, filter=True):
             'stid': data['cid'],
             'lon':rwis_row[1],    
             'lat':rwis_row[0],
-            'img_path':img_urls[i],
+            'img_path':[img_urls[i], img_src_masks[i], img_gen_masks[i]], #img_urls
             'RSC': category, # Predicted category
-            "RSI": 0.4 #BUG
+            "RSI": estimate_ratio, #BUG
+            "stid+RSI": data['cid'] + "<br>" + str(estimate_ratio) 
         }
         dashcams.append(dashcam)
     return dashcams
