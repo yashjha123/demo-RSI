@@ -27,7 +27,7 @@ import rsi_page
 from rsi_page import *
 import crop_cal_perc_white_black
 from crop_cal_perc_white_black import *
-from AVL_Image_URL import getPredictForOneImage, grab_avl_data_v2
+from AVL_Image_URL import getPredictForOneImage, grab_avl_data_v2, grab_RWIS_data
 from dash_extensions.enrich import Input, Output, State, FileSystemCache, Trigger, ServersideOutput
 
 
@@ -62,7 +62,7 @@ class TraceInfo:
     def __trace_names(self):
         return [trace.get('name') for trace in self.traces]
 
-df, df_rwis, df_unknown, df_rwis_all = utils.load_data(date.today())
+df, df_rwis, df_unknown, df_rwis_all = utils.load_data(date.today(),placeholder=True)
 
 rsc_colors = {'Full Snow Coverage': 'white',
               'Partly Snow Coverage': 'grey',
@@ -152,13 +152,16 @@ def tuple_append(tup,elem):
         (Output("cancel_button_id", "disabled"), False, True),
     ],
     background=True,
-    cancel=[Input("cancel_button_id", "n_clicks"),Input('pick_date_time', 'date')],
+    cancel=[Input("cancel_button_id", "n_clicks"), Input("process_in_background", "data")],
     prevent_initial_call=True,
     progress=[Output("progress_bar", "value") ,Output('AVL_map', 'figure')],
 )
 def run_calculation(set_progress,todo,prev_fig,selected_date):
     # print(set_progress)
-    print("TADA5")
+    # print("TADA5")
+    if type(todo) == str and todo == "UsePlaceholder":
+        return "We could not find any information for the specified date. Please ensure that you have chosen a date prior to the present. A sample dataset has been generated.."
+
     if todo == None or len(todo)==0:
         # set_progress(('1','1',prev_fig))
         # raise PreventUpdate
@@ -171,7 +174,7 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
         elif elem['type'] ==  "rwis":
             rwis_todo.append(elem)
     # print(todo)
-    print(" ")
+    # print(" ")
 
     BATCH_SIZE = 128
     # for i in range(100):
@@ -185,20 +188,97 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
     #     print(prev_fig['data'][x]['hovertext'][0],x)
         # if(prev_fig['data'][x]['hovertext'][0]=='Not labeled yet'):
         #     not_labelled_index = x
-        #     break
+        #     brea
+    # print(prev_fig['data'])
+    progress = 0
+    for i in range(0,len(rwis_todo),BATCH_SIZE):
+        d = {}
+        new_d = {}
+        for color in rsc_labels:
+            new_d[color] = []
+        # print(prev_fig['data'])
+        # print(rwis_todo)
+        for x in range(len(prev_fig['data'])):
+            # print(d['da'])
+            d[prev_fig['data'][x]['name']] = x
+            # print(prev_fig['data'][x]['name'],x)
+        more = rwis_todo[i:i+BATCH_SIZE]
+        progress+=len(more)
+        new_plots = grab_RWIS_data(more)
+        # print(d)
+        not_labelled_index = d[ 'RWIS-Waiting...']
+        # getPredictForOneImage(url)
+        # print(i)
+        # print(not_labelled_index)
+        for new_plot in new_plots:
+            # img_url = new_plot['PHOTO_URL']
+            identifier = new_plot['old_label']
+            ind = prev_fig['data'][not_labelled_index]['hovertext'].index(identifier)
+            
+            prev_fig['data'][not_labelled_index]['customdata'].pop(ind)
+            prev_fig['data'][not_labelled_index]['hovertext'].pop(ind)
+            prev_fig['data'][not_labelled_index]['lat'].pop(ind)
+            prev_fig['data'][not_labelled_index]['lon'].pop(ind)
+
+            if new_plot['RSC'] in d.keys():
+                cri = d[new_plot['RSC']]
+                prev_fig['data'][cri]['customdata'] = tuple_append(prev_fig['data'][cri]['customdata'],new_plot['img_path'])
+                prev_fig['data'][cri]['hovertext'] = tuple_append(prev_fig['data'][cri]['hovertext'],new_plot['stid+RSI'])
+                prev_fig['data'][cri]['lon'] = tuple_append(prev_fig['data'][cri]['lon'],new_plot['lon'])
+                prev_fig['data'][cri]['lat'] = tuple_append(prev_fig['data'][cri]['lat'],new_plot['lat'])
+            else:
+                new_d[new_plot['RSC']].append(new_plot)
+        rwis_locations = []
+        for category in rsc_labels:
+            lons = [x['lon'] for x in new_d[category]]
+            lats = [x['lat'] for x in new_d[category]]
+            labels = [x['RSC'] for x in new_d[category]]
+            hover_text = [x['stid+RSI'] for x in new_d[category]]
+            imgs = [x['img_path'] for x in new_d[category]]
+            if len(labels) > 0:
+                rwis_locations.append(go.Scattermapbox(
+                    lon=lons,
+                    lat=lats,
+                    mode='markers',
+                    marker={'color': rsc_colors[category], 'size': 20, 'opacity': 0.8,},
+                    hoverinfo='text',
+                    hovertext=hover_text,
+                    customdata=imgs,
+                    showlegend=True,
+                    name='RWIS-'+labels[0],
+                ))
+        map_layout = go.Layout(
+            mapbox=go.layout.Mapbox(
+                accesstoken=mapbox_access_token,
+                style="dark",
+                zoom=7,
+                pitch=0,
+            ),
+            height=740,
+            margin=dict(l=15, r=15, t=15, b=15),
+            paper_bgcolor="#303030",
+            font_color="white",
+            uirevision=True
+        )
+        new_fig = go.Figure(data=rwis_locations, layout=map_layout)
+        prev_fig['data'].extend(new_fig['data'])
+          
+        # print(str(i), str(len(todo)))
+        set_progress((str((progress)*100/len(todo)),prev_fig))
+
     for i in range(0,len(avl_todo),BATCH_SIZE):
         d = {}
         new_d = {}
         for color in rsc_labels:
             new_d[color] = []
         for x in range(len(prev_fig['data'])):
-            # print(d['da'])
-            d[prev_fig['data'][x]['hovertext'][0]] = x
-            print(prev_fig['data'][x]['hovertext'][0],x)
-        new_plots = grab_avl_data_v2(todo[i:i+BATCH_SIZE])
-        not_labelled_index = d['Not labeled yet']
+            d[prev_fig['data'][x]['name']] = x
+        progress += len(avl_todo[i:i+BATCH_SIZE])
+        new_plots = grab_avl_data_v2(avl_todo[i:i+BATCH_SIZE])
+        not_labelled_index = d['AVL-Not labeled yet']
         # getPredictForOneImage(url)
         # print(i)
+        # print(not_labelled_index)
         for new_plot in new_plots:
             img_url = new_plot['PHOTO_URL']
             ind = prev_fig['data'][not_labelled_index]['customdata'].index(img_url)
@@ -207,15 +287,9 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
             prev_fig['data'][not_labelled_index]['hovertext'].pop(ind)
             prev_fig['data'][not_labelled_index]['lat'].pop(ind)
             prev_fig['data'][not_labelled_index]['lon'].pop(ind)
-            # ans_indx = d[(new_plot['Predict'])]
-            # print(new_plot)
 
             if new_plot['Predict'] in d.keys():
                 cri = d[new_plot['Predict']]
-                # print(prev_fig['data'][cri]['customdata'])
-                # print(prev_fig['data'][cri]['hovertext'])
-                # print(prev_fig['data'][cri]['lon'])
-                # print(prev_fig['data'][cri]['lat'])
                 prev_fig['data'][cri]['customdata'] = tuple_append(prev_fig['data'][cri]['customdata'],new_plot['PHOTO_URL'])
                 prev_fig['data'][cri]['hovertext'] = tuple_append(prev_fig['data'][cri]['hovertext'],new_plot['Predict'])
                 prev_fig['data'][cri]['lon'] = tuple_append(prev_fig['data'][cri]['lon'],new_plot['x'])
@@ -233,7 +307,7 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
                     lon=lons,
                     lat=lats,
                     mode='markers',
-                    marker={'color': rsc_colors[color], 'size': 10, 'opacity': 1.0},
+                    marker={'color': rsc_colors[color], 'size': 10, 'opacity': 1.0},    
                     hoverinfo='text',
                     hovertext=labels,
                     customdata=imgs,
@@ -256,35 +330,13 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
         new_fig = go.Figure(data=avl_locations, layout=map_layout)
         prev_fig['data'].extend(new_fig['data'])
           
-        print(str(i), str(len(todo)))
-        set_progress((str(i*100/len(todo)),prev_fig))
+        # print(str(i), str(len(avl_todo)))
+        set_progress((str((progress)*100/len(todo)),prev_fig))
     
-    #     # fsc.set("progress",str(i))
-    # set_progress(('1','1'))
     return "Done"
 
 
-#callback for the AVL points map
-#to determine the file
-# TODO: update for toggleable filter button
-@app.callback(
-    #Output('dd-output-container', 'children'),
-    [Output('picked_df', 'data'),Output('picked_df_rwis', 'data'),Output('picked_df_unknown', 'data'),
-     Output('picked_df_rwis_all', 'data'),Output('AVL_map', 'figure'),ServersideOutput('process_in_background','data')],
-    [Input('slider', 'value'),Input('pick_date_time', 'value'),Input('rsc_colors', 'data')],
-    [State('AVL_map', 'figure')] 
-)
-def load_map(window, pick_date_time, rsc_colors, prev_fig):
-    # print(prev_fig)
-    print(pick_date_time)
-    # print(parse(pick_date_time))
-    # print(triggered)
-    rsc_colors = rsc_colors
-
-    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time)) # TODO:
-
-    # df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
-
+def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
     df_subs = []
     # print
     
@@ -310,12 +362,13 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
     ) for df_sub in df_subs]
 
     df_rwis_subs = []
-    for rsc_type in list(rsc_colors.keys()):
-        to_append = df_rwis_all[df_rwis_all['RSC'] == rsc_type]
-        if len(to_append) == 0:
-            pass
-        else:
-            df_rwis_subs.append(to_append)
+    if(len(df_rwis_all)>0):
+            for rsc_type in list(rsc_colors.keys()):
+                to_append = df_rwis_all[df_rwis_all['RSC'] == rsc_type]
+                if len(to_append) == 0:
+                    pass
+                else:
+                    df_rwis_subs.append(to_append)
 
     rwis_locations = [go.Scattermapbox(
         lon=df_sub['lon'],
@@ -330,11 +383,38 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
     ) for df_sub in df_rwis_subs]
 
     locations = avl_locations + rwis_locations
+    return locations
 
+#callback for the AVL points map
+#to determine the file
+# TODO: update for toggleable filter button
+@app.callback(
+    #Output('dd-output-container', 'children'),
+    [Output('picked_df', 'data'),Output('picked_df_rwis', 'data'),Output('picked_df_unknown', 'data'),
+     Output('picked_df_rwis_all', 'data'),Output('AVL_map', 'figure'),ServersideOutput('process_in_background','data')],
+    [Input('slider', 'value'),Input('pick_date_time', 'value'),Input('rsc_colors', 'data')],
+    [State('AVL_map', 'figure')] 
+)
+def load_map(window, pick_date_time, rsc_colors, prev_fig):
+    # print(prev_fig)
+    todo = []
+
+    print(pick_date_time)
+    # print(parse(pick_date_time))
+    # print(triggered)
+    rsc_colors = rsc_colors
+
+    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time),window=window) # TODO:
+
+    # df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
+
+    
+    # print(mean(df_rwis_all['lat'])) # 41.841316666666664
+    # print(mean(df_rwis_all['lon'])) # -93.10251666666667
     map_layout = go.Layout(
         mapbox=go.layout.Mapbox(
             accesstoken=mapbox_access_token,
-            center=go.layout.mapbox.Center(lat=mean(df_rwis_all['lat']), lon=mean(df_rwis_all['lon'])),
+            center=go.layout.mapbox.Center(lat=41.841316666666664, lon=-93.10251666666667),
             style="dark",
             zoom=7,
             pitch=0,
@@ -345,7 +425,15 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
         font_color="white",
         uirevision=True
     )
-    figure = go.Figure(data=locations, layout=map_layout)
+    locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
+    # print(locations)
+    if len(locations):
+        figure = go.Figure(data=locations, layout=map_layout)
+    else:
+        df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time), placeholder=True) # TODO:
+        locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
+        figure = go.Figure(data=locations, layout=map_layout)
+        todo = "UsePlaceholder"
     # figure.add
     # ptr = {'curveNumber': 1, 'pointNumber': 0, 'pointIndex': 0, 'lon': -93.8417, 'lat': 40.73867, 'customdata': '1_rwis_imgs_masks\\IDOT-026-00_202001191426img.jpg', 'hovertext': 'RLEI4', 'bbox': {'x0': 451.9141511111087, 'x1': 453.9141511111087, 'y0': 675.3332477751857, 'y1': 677.3332477751857}}
     # print(prev_fig)
@@ -376,7 +464,6 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
     #     name="AVL-DATA"
     # ))
 
-    todo = []
     # print(df[df['Predict'] == "Not labeled yet"])
     if len(df) > 0:
         # print(df)
@@ -385,9 +472,9 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
             todo.append({'type':"avl",'lon':plt['x'],'lat':plt['y'],'imgurl':plt['PHOTO_URL']})
     if len(df_rwis_all) >0:
         for plt in (df_rwis_all[df_rwis_all['RSC'] == "Waiting..."]).to_dict('records'):
-            todo.append({'type':'rwis','lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['img_path']})
+            todo.append({'type':'rwis','cid':plt['stid'],'lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['img_path']})
     # ['PHOTO_URL'].values)
-    print(todo)
+    # print(todo)
     return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),figure,todo]
 
 
@@ -612,11 +699,6 @@ def display_dl_prediction(clickData, df):
                     to_return = [
                         html.Img(
                         src=the_link[1],
-                        style={'max-height': '70%', 'max-width': '70%',
-                               'display': 'inline-block', 'margin': 'auto',}
-                        ),
-                        html.Img(
-                        src=the_link[2],
                         style={'max-height': '70%', 'max-width': '70%',
                                'display': 'inline-block', 'margin': 'auto',}
                         )

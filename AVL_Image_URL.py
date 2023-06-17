@@ -216,6 +216,76 @@ def checkrwiscache(results, filter=True):
     return dashcams
 
 
+def grab_RWIS_data(todo):
+    rwis_stations = pd.read_csv('0_RWIS_GPS_data_mod.csv')
+
+    dashcams = []
+    # TODO: -v uncomment this for caching implementation
+    # url = ("http://127.0.0.1:8080/snow_estimate")
+    url = ("http://127.0.0.1:8080/snow_estimate")
+    # data = {"img_urls": img_urls}
+    # r = requests.post(url, json=data)
+    # result_dict = (r.json())['result']
+
+    filtered_data = []
+    img_urls = []
+    # url = ("http://127.0.0.1:8080/predictBatchesV2")
+    # print(results['data'])
+    # print("IMG URLS",img_urls)
+    # BATCH_SIZE = 20
+    # for i in tqdm(range(0,len(results))):
+    #     img_urls = [x['imgurl'] for x in results['data'][i:i+BATCH_SIZE]]
+    #     # print(img_urls)
+    img_urls = []
+    for x in todo:
+        # print(x)
+        img_urls.append(x['imgurl'][0])
+
+    data1 = {"img_urls": img_urls}
+
+    r = requests.post(url, json=data1) 
+    result_dict = (r.json())['result']
+    print(result_dict)
+    # estimate_ratios = result_dicte['estimate_ratio']
+    # img_gen_masks = result_dicte['img_gen_masks']
+    # img_src_masks = result_dicte['img_src_masks']
+    # print(estimate_ratios)
+    # image_placeholder = "https://mesonet.agron.iastate.edu/archive/data/2023/05/25/camera/idot_trucks/A34681/A34681_202123305251928.jpg"
+    for i, data in tqdm(enumerate(todo)):
+        rwis_row = rwis_stations[rwis_stations['cid'] == data['cid']].values
+        if len(rwis_row) == 0:
+            continue
+        rwis_row = rwis_row[0]
+
+        # TODO: conversion of estimate ratio to rsi ranges
+        # bare: 0.8-1.0
+        # part snow: 0.5-0.8
+        # full: 0.2-0.5
+        estimate_ratio = result_dict[img_urls[i]][0]
+        if estimate_ratio >= 0.8:
+            category = 'Bare'
+        elif estimate_ratio >= 0.5:
+            category = 'Partly Snow Coverage'
+        else:
+            category = 'Full Snow Coverage'
+
+        # TODO: add option to see generated mask
+        # interpret image from binary data
+        # optimize rwis ml function
+
+        dashcam = {
+            'stid': data['cid'],
+            'lon':rwis_row[1],    
+            'lat':rwis_row[0],
+            'img_path':[img_urls[i], result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]], #img_urls
+            'RSC': category, # Predicted category
+            "RSI": estimate_ratio, #BUG
+            "stid+RSI": data['cid'] + "<br>" + str(estimate_ratio),
+            "old_label":data['cid'] + "<br>" + str(0),
+        }
+        dashcams.append(dashcam)
+    return dashcams
+
 def grab_avl_data(results):
     """
     Processes JSON to grab AVL specific data

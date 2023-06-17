@@ -25,16 +25,23 @@ from datetime import timedelta
 
 #     return df
 
-def load_data(picked_date_time, window=360):
+def load_data(picked_date_time, window=360, placeholder = False):
     # df = pd.read_csv("1_predicted_I35N_down_2019  -01-12_07.csv")
     # df = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test'+picked_date+'.csv')
-    time = (picked_date_time).strftime("%Y-%m-%dT%H:%M")
-    avl_data = checkcache(get_cameras(str(window),time))
-    all = checkrwiscache(get_rwis_cameras(str(window),time))
-    # print(d)
-    df = pd.DataFrame(avl_data)
-    df_rwis_all = pd.DataFrame(all)
-    # template/preset data for initial demorsi - remove/replace when RWIS is automated
+    if placeholder:
+        df = pd.read_csv('placeholder.csv')
+        df_rwis_all = pd.read_csv("placeholder2.csv") # prediction mask url + estimate ratio + classification
+        
+    else:
+        time = (picked_date_time).strftime("%Y-%m-%dT%H:%M")
+        avl_data = checkcache(get_cameras(str(window),time))
+        all = checkrwiscache(get_rwis_cameras(str(window),time))
+        # print(d)
+        df = pd.DataFrame(avl_data)
+        df_rwis_all = pd.DataFrame(all)
+        # df.to_csv("placeholder.csv")
+        # df_rwis_all.to_csv("placeholder2.csv")
+        # template/preset data for initial demorsi - remove/replace when RWIS is automated
     df_rwis = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/RWIS_locs.csv") # ask whats going on here...
     df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv') # unknown RWIS data (location, time, for interpolation)
     # df_rwis_all = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/2_obtain_rsi_for_imgs.csv") # prediction mask url + estimate ratio + classification
