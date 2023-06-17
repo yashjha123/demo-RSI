@@ -68,7 +68,8 @@ rsc_colors = {'Full Snow Coverage': 'white',
               'Partly Snow Coverage': 'grey',
               'Bare': 'black',
               'Undefined': '#FDDD0D',
-              'Not labeled yet':'green'}
+              'Not labeled yet':'green',
+              'Waiting...':'green'}
 
 rsc_labels = ['Full Snow Coverage',
               'Partly Snow Coverage',
@@ -162,11 +163,17 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
         # set_progress(('1','1',prev_fig))
         # raise PreventUpdate
         return "Done"
-
+    avl_todo = []
+    rwis_todo = []
+    for elem in todo:
+        if elem['type'] == "avl":
+            avl_todo.append(elem)
+        elif elem['type'] ==  "rwis":
+            rwis_todo.append(elem)
     # print(todo)
     print(" ")
 
-    BATCH_SIZE = 32*4
+    BATCH_SIZE = 128
     # for i in range(100):
     #     time.sleep(0.5)
     #     set_progress((str(i + 1), str(100)))
@@ -179,8 +186,7 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
         # if(prev_fig['data'][x]['hovertext'][0]=='Not labeled yet'):
         #     not_labelled_index = x
         #     break
-    
-    for i in range(0,len(todo),BATCH_SIZE):
+    for i in range(0,len(avl_todo),BATCH_SIZE):
         d = {}
         new_d = {}
         for color in rsc_labels:
@@ -376,9 +382,12 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
         # print(df)
         for plt in (df[df['Predict'] == "Not labeled yet"]).to_dict('records'):
             # print(plt)
-            todo.append({'lon':plt['x'],'lat':plt['y'],'imgurl':plt['PHOTO_URL']})
+            todo.append({'type':"avl",'lon':plt['x'],'lat':plt['y'],'imgurl':plt['PHOTO_URL']})
+    if len(df_rwis_all) >0:
+        for plt in (df_rwis_all[df_rwis_all['RSC'] == "Waiting..."]).to_dict('records'):
+            todo.append({'type':'rwis','lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['img_path']})
     # ['PHOTO_URL'].values)
-    print("TADA")
+    print(todo)
     return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),figure,todo]
 
 

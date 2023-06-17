@@ -124,7 +124,8 @@ def checkrwiscache(results, filter=True):
 
     dashcams = []
     # TODO: -v uncomment this for caching implementation
-    url = ("http://127.0.0.1:8080/snow_estimate")
+    # url = ("http://127.0.0.1:8080/snow_estimate")
+    url = ("http://127.0.0.1:8080/snow_estimate_from_cache")
     # data = {"img_urls": img_urls}
     # r = requests.post(url, json=data)
     # result_dict = (r.json())['result']
@@ -140,7 +141,7 @@ def checkrwiscache(results, filter=True):
         rwis_row = rwis_row[0]
 
         if filter:
-            point = Point(rwis_row[1],rwis_row[0])
+            point = Point(rwis_row[1],rwis_row[0])  
             distances = (shapely.distance(point,both_highways.geometry) < 0.002)
             if (distances[0] or distances[1]) == False:
                 continue
@@ -156,12 +157,13 @@ def checkrwiscache(results, filter=True):
     data1 = {"img_urls": img_urls}
 
     r = requests.post(url, json=data1) 
-    result_dicte = (r.json())['result']
-    estimate_ratios = result_dicte['estimate_ratio']
-    img_gen_masks = result_dicte['img_gen_masks']
-    img_src_masks = result_dicte['img_src_masks']
-    print(estimate_ratios)
-
+    result_dict = (r.json())['result']
+    print(result_dict)
+    # estimate_ratios = result_dicte['estimate_ratio']
+    # img_gen_masks = result_dicte['img_gen_masks']
+    # img_src_masks = result_dicte['img_src_masks']
+    # print(estimate_ratios)
+    image_placeholder = "https://mesonet.agron.iastate.edu/archive/data/2023/05/25/camera/idot_trucks/A34681/A34681_202123305251928.jpg"
     for i, data in tqdm(enumerate(filtered_data)):
         rwis_row = rwis_stations[rwis_stations['cid'] == data['cid']].values
         if len(rwis_row) == 0:
@@ -172,7 +174,24 @@ def checkrwiscache(results, filter=True):
         # bare: 0.8-1.0
         # part snow: 0.5-0.8
         # full: 0.2-0.5
-        estimate_ratio = estimate_ratios[i]
+        
+        if result_dict[img_urls[i]]==None:
+            
+            category = "Waiting..."
+            estimate_ratio = 0
+            dashcam = {
+                'stid': data['cid'],
+                'lon':rwis_row[1],    
+                'lat':rwis_row[0],
+                'img_path':[img_urls[i], image_placeholder, image_placeholder], #img_urls
+                'RSC': category, # Predicted category
+                "RSI": estimate_ratio, #BUG
+                "stid+RSI": data['cid'] + "<br>" + str(estimate_ratio) 
+            }
+            dashcams.append(dashcam)
+            continue
+            
+        estimate_ratio = result_dict[img_urls[i]][0]
         if estimate_ratio >= 0.8:
             category = 'Bare'
         elif estimate_ratio >= 0.5:
@@ -188,7 +207,7 @@ def checkrwiscache(results, filter=True):
             'stid': data['cid'],
             'lon':rwis_row[1],    
             'lat':rwis_row[0],
-            'img_path':[img_urls[i], img_src_masks[i], img_gen_masks[i]], #img_urls
+            'img_path':[img_urls[i], result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]], #img_urls
             'RSC': category, # Predicted category
             "RSI": estimate_ratio, #BUG
             "stid+RSI": data['cid'] + "<br>" + str(estimate_ratio) 

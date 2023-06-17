@@ -10,7 +10,7 @@ import dash
 from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
-import dash_datetimepicker
+# import dash_datetimepicker
 
 from dash.dependencies import Input, Output
 
