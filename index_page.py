@@ -261,5 +261,5 @@ app.layout = PageLayout()
 
 ##----------------------------------------------------------
 if __name__ == "__main__":
-    app.run_server(debug=True,host='0.0.0.0',port=8050,dev_tools_props_check=False)
+    app.run_server(debug=False,host='0.0.0.0',port=8050,dev_tools_props_check=False)
 

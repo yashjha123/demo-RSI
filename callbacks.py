@@ -62,7 +62,7 @@ class TraceInfo:
     def __trace_names(self):
         return [trace.get('name') for trace in self.traces]
 
-df, df_rwis, df_unknown, df_rwis_all = utils.load_data(date.today(),placeholder=True)
+df, df_rwis, df_unknown, df_rwis_all = utils.load_data(date.today(),placeholder=False)
 
 rsc_colors = {'Full Snow Coverage': 'white',
               'Partly Snow Coverage': 'grey',
@@ -127,7 +127,7 @@ def tuple_append(tup,elem):
     return tuple(list(tup)+[(elem)])
 @app.callback(
     output=Output("result", "children"),
-    inputs=[Input("process_in_background", "data"),State('AVL_map', 'figure'),State('pick_date_time', 'value')],
+    inputs=[Input("process_in_background", "data"),State('AVL_map', 'figure'),State('pick_date_time', 'value'),State('picked_df', 'data')],
     running=[
         (
             Output("result", "style"),
@@ -154,14 +154,13 @@ def tuple_append(tup,elem):
     background=True,
     cancel=[Input("cancel_button_id", "n_clicks"), Input("process_in_background", "data")],
     prevent_initial_call=True,
-    progress=[Output("progress_bar", "value") ,Output('AVL_map', 'figure')],
+    progress=[Output("progress_bar", "value"), Output('AVL_map', 'figure')],
 )
-def run_calculation(set_progress,todo,prev_fig,selected_date):
+def run_calculation(set_progress,todo,prev_fig,selected_date,df):
     # print(set_progress)
     # print("TADA5")
     if type(todo) == str and todo == "UsePlaceholder":
         return "We could not find any information for the specified date. Please ensure that you have chosen a date prior to the present. A sample dataset has been generated.."
-
     if todo == None or len(todo)==0:
         # set_progress(('1','1',prev_fig))
         # raise PreventUpdate
@@ -218,7 +217,7 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
             prev_fig['data'][not_labelled_index]['customdata'].pop(ind)
             prev_fig['data'][not_labelled_index]['hovertext'].pop(ind)
             prev_fig['data'][not_labelled_index]['lat'].pop(ind)
-            prev_fig['data'][not_labelled_index]['lon'].pop(ind)
+            prev_fig['data'][not_labelled_index]['lon'].pop(ind)    
 
             if new_plot['RSC'] in d.keys():
                 cri = d[new_plot['RSC']]
@@ -263,6 +262,7 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
         new_fig = go.Figure(data=rwis_locations, layout=map_layout)
         prev_fig['data'].extend(new_fig['data'])
           
+        
         # print(str(i), str(len(todo)))
         set_progress((str((progress)*100/len(todo)),prev_fig))
 
@@ -281,16 +281,18 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
         # print(not_labelled_index)
         for new_plot in new_plots:
             img_url = new_plot['PHOTO_URL']
-            ind = prev_fig['data'][not_labelled_index]['customdata'].index(img_url)
+            
+            ind = prev_fig['data'][not_labelled_index]['customdata'].index({'url':img_url,'preds':None})
             
             prev_fig['data'][not_labelled_index]['customdata'].pop(ind)
             prev_fig['data'][not_labelled_index]['hovertext'].pop(ind)
             prev_fig['data'][not_labelled_index]['lat'].pop(ind)
             prev_fig['data'][not_labelled_index]['lon'].pop(ind)
-
-            if new_plot['Predict'] in d.keys():
-                cri = d[new_plot['Predict']]
-                prev_fig['data'][cri]['customdata'] = tuple_append(prev_fig['data'][cri]['customdata'],new_plot['PHOTO_URL'])
+            print(d.keys())
+            print("CUSTOM DATA FIELD",new_plot['custom_data'])
+            if "AVL-"+new_plot['Predict'] in d.keys():
+                cri = d["AVL-"+new_plot['Predict']]
+                prev_fig['data'][cri]['customdata'] = tuple_append(prev_fig['data'][cri]['customdata'],new_plot['custom_data'])
                 prev_fig['data'][cri]['hovertext'] = tuple_append(prev_fig['data'][cri]['hovertext'],new_plot['Predict'])
                 prev_fig['data'][cri]['lon'] = tuple_append(prev_fig['data'][cri]['lon'],new_plot['x'])
                 prev_fig['data'][cri]['lat'] = tuple_append(prev_fig['data'][cri]['lat'],new_plot['y'])
@@ -301,7 +303,7 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
             lons = [x['x'] for x in new_d[color]]
             lats = [x['y'] for x in new_d[color]]
             labels = [x['Predict'] for x in new_d[color]]
-            imgs = [x['PHOTO_URL'] for x in new_d[color]]
+            imgs = [x['custom_data'] for x in new_d[color]]
             if len(labels) > 0:
                 avl_locations.append(go.Scattermapbox(
                     lon=lons,
@@ -330,7 +332,6 @@ def run_calculation(set_progress,todo,prev_fig,selected_date):
         new_fig = go.Figure(data=avl_locations, layout=map_layout)
         prev_fig['data'].extend(new_fig['data'])
           
-        # print(str(i), str(len(avl_todo)))
         set_progress((str((progress)*100/len(todo)),prev_fig))
     
     return "Done"
@@ -343,44 +344,44 @@ def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
     if len(df) > 0:
         for rsc_type in list(rsc_colors.keys()):
             to_append = df[df['Predict'] == rsc_type] # groups by category (AVL)
-            if len(to_append) == 0:
-                pass
-            else:
-                df_subs.append(to_append)
+            # if len(to_append) == 0:
+            #     pass
+            # else:
+            df_subs.append((rsc_type,to_append))
 
     # print("DF_SUBS",df_subs)
     avl_locations = [go.Scattermapbox(
         lon=df_sub['x'],
         lat=df_sub['y'],
         mode='markers',
-        marker={'color': rsc_colors[df_sub['Predict'].iloc[0]], 'size': 10, 'opacity': 1.0},
+        marker={'color': rsc_colors[rsc_type], 'size': 10, 'opacity': 1.0},
         hoverinfo='text',
         hovertext=df_sub['Predict'],
-        customdata=df_sub['PHOTO_URL'],
+        customdata=df_sub['custom_data'],
         showlegend=True,
-        name='AVL-'+df_sub['Predict'].iloc[0],
-    ) for df_sub in df_subs]
+        name='AVL-'+rsc_type,
+    ) for rsc_type, df_sub in df_subs]
 
     df_rwis_subs = []
     if(len(df_rwis_all)>0):
-            for rsc_type in list(rsc_colors.keys()):
-                to_append = df_rwis_all[df_rwis_all['RSC'] == rsc_type]
-                if len(to_append) == 0:
-                    pass
-                else:
-                    df_rwis_subs.append(to_append)
+        for rsc_type in list(rsc_colors.keys()):
+            to_append = df_rwis_all[df_rwis_all['RSC'] == rsc_type]
+            if len(to_append) == 0:
+                pass
+            else:
+                df_rwis_subs.append((rsc_type,to_append))
 
     rwis_locations = [go.Scattermapbox(
         lon=df_sub['lon'],
         lat=df_sub['lat'],
         mode='markers',
-        marker={'color': rsc_colors[df_sub['RSC'].iloc[0]], 'size': 20, 'opacity': 0.8,},
+        marker={'color': rsc_colors[rsc_type], 'size': 20, 'opacity': 0.8,},
         showlegend=True,
         hoverinfo='text',
         hovertext= df_sub['stid+RSI'],
         customdata=df_sub['img_path'],
-        name='RWIS-'+df_sub['RSC'].iloc[0], # iloc grabs element at first index 
-    ) for df_sub in df_rwis_subs]
+        name='RWIS-'+rsc_type, # iloc grabs element at first index 
+    ) for rsc_type,df_sub in df_rwis_subs]
 
     locations = avl_locations + rwis_locations
     return locations
@@ -405,7 +406,7 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
     rsc_colors = rsc_colors
 
     df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time),window=window) # TODO:
-
+    print(df)
     # df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
 
     
@@ -430,7 +431,7 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
     if len(locations):
         figure = go.Figure(data=locations, layout=map_layout)
     else:
-        df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time), placeholder=True) # TODO:
+        df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time), placeholder=False) # TODO:
         locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
         figure = go.Figure(data=locations, layout=map_layout)
         todo = "UsePlaceholder"
@@ -441,40 +442,15 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
         ret = {"data":[],"layout":prev_fig["layout"]}
         for x in range(len(figure.data)):
             ret['data'].append(figure.data[x])
-            # prev_fig['data'][x]['hoverinfo']=figure.data[x].hoverinfo
-            # prev_fig['data'][x]['hovertext']=figure.data[x].hovertext
-            # prev_fig['data'][x]['lat']=figure.data[x].lat
-            # prev_fig['data'][x]['lon']=figure.data[x].lon
-            # prev_fig['data'][x]['marker']=figure.data[x].marker
-            # prev_fig['data'][x]['mode']=figure.data[x].mode
-            # prev_fig['data'][x]['name']=figure.data[x].name
-            # prev_fig['data'][x]['showlegend']=figure.data[x].showlegend
-            # prev_fig['data'][x]['type']=figure.data[x].type
         figure = ret
-    # print(figure.data[0].customdata)
-    # figure.add_trace(go.Scattermapbox(
-    #             lon=(-93.8417,),
-    #     lat=(40.73867,),
-    #     mode='markers',
-    #     marker={'color': rsc_colors["Full Snow Coverage"], 'size': 10, 'opacity': 1.0},
-    #     hoverinfo='text',
-    #     hovertext="AVL-DATA",
-    #     customdata=("http://cloud.iowadot.gov/Highway/Photos/Maintenance/MapSnapShots/SnowPlow/2019/1/12/A33976-2019-01-12_07_15_26.jpg",),
-    #     showlegend=True,
-    #     name="AVL-DATA"
-    # ))
 
-    # print(df[df['Predict'] == "Not labeled yet"])
     if len(df) > 0:
-        # print(df)
         for plt in (df[df['Predict'] == "Not labeled yet"]).to_dict('records'):
-            # print(plt)
             todo.append({'type':"avl",'lon':plt['x'],'lat':plt['y'],'imgurl':plt['PHOTO_URL']})
     if len(df_rwis_all) >0:
         for plt in (df_rwis_all[df_rwis_all['RSC'] == "Waiting..."]).to_dict('records'):
-            todo.append({'type':'rwis','cid':plt['stid'],'lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['img_path']})
-    # ['PHOTO_URL'].values)
-    # print(todo)
+            todo.append({'type':'rwis','cid':plt['stid'],'lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['img_path']['url']})
+
     return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),figure,todo]
 
 
@@ -492,7 +468,7 @@ def display_click_data(clickData):
         else:
             if type(the_link) == str:
                 return html.Img(
-                    src=the_link,
+                    src=the_link['url'],
                     style={'max-height': '90%', 'max-width': '90%',
                            'display': 'block', 'margin-left': 'auto',
                            'margin-right': 'auto',})
@@ -500,7 +476,7 @@ def display_click_data(clickData):
                 # print('check')
                     
                 return html.Img(
-                    src=the_link[0],
+                    src=the_link['url'],
                     style={'max-height': '70%', 'max-width': '70%',
                            'display': 'block', 'margin-left': 'auto',
                            'margin-right': 'auto',},)
@@ -511,7 +487,6 @@ def display_click_data(clickData):
     [Output('dl_prediction', 'children'),Output('trigger_on_click','data')],
     [Input('AVL_map', 'clickData'), Input('picked_df', 'data')],)
 def display_dl_prediction(clickData, df):
-    print(clickData)
     # avl_fig = (go.Figure(avl_fig))
     if clickData is None:
         print("AAA")
@@ -581,17 +556,20 @@ def display_dl_prediction(clickData, df):
             return to_return, False
         else:
             print("DDD")
+            print(the_link)
 
-            if 'SnowPlow' in the_link or 'idot_trucks' in the_link:
-                print("EEE")
+            img_url = the_link['url']
+            if 'SnowPlow' in img_url or 'idot_trucks' in img_url:
+                print("EE")
+
                 try:
                     df = pd.DataFrame.from_dict(df)
                     # try:
-                    if df[df['PHOTO_URL'] == the_link]["LABEL"].values[0] == "Not labeled yet":
+                    if the_link['preds'] == None:
                         print("WE AREN'T LABELLED YET")
                         values = []
                         labels = rsc_labels
-                        classes = getPredictForOneImage(the_link)
+                        classes = getPredictForOneImage(img_url)
                         print(classes)
                         for label in labels:
                             values.append(
@@ -631,7 +609,7 @@ def display_dl_prediction(clickData, df):
                     values = []
                     for label in labels:
                         values.append(
-                            round(df[df['PHOTO_URL'] == the_link]['prob_' + label].values[0], 3))
+                            round(the_link['preds']['prob_' + label], 3))
                     colors = list(rsc_colors.values())
                     fig = go.Figure(data=[
                         go.Pie(labels=labels, values=values, hole=.4, marker={'colors': colors}, )])
@@ -659,7 +637,6 @@ def display_dl_prediction(clickData, df):
                         )
                     ]
                 except Exception as e:
-                    print("EXCEPTION CALLED!!")
                     print(e)
                     labels = ['Please click a dot.']
                     values = [1.0]
@@ -689,16 +666,14 @@ def display_dl_prediction(clickData, df):
                     ]
                 return to_return, False
             else:
-                print("WHY ARE WE HERE?")
-                # print (clickData)
-                the_link = clickData['points'][0]['customdata']
+                preds = clickData['points'][0]['customdata']['preds']
                 # https://raw.githubusercontent.com/WMJason/demo-RSI/main/https:/mesonet.agron.iastate.edu/archive/data/2023/05/02/camera/IDOT-030-00/IDOT-030-00_202305022358.jpg
-                if the_link is None:
+                if clickData['points'][0]['customdata'] is None:
                     return 'No Mask Available'
                 else:
                     to_return = [
                         html.Img(
-                        src=the_link[1],
+                        src=preds[0],
                         style={'max-height': '70%', 'max-width': '70%',
                                'display': 'inline-block', 'margin': 'auto',}
                         )

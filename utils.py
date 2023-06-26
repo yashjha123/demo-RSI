@@ -37,6 +37,7 @@ def load_data(picked_date_time, window=360, placeholder = False):
         avl_data = checkcache(get_cameras(str(window),time))
         all = checkrwiscache(get_rwis_cameras(str(window),time))
         # print(d)
+        print(avl_data)
         df = pd.DataFrame(avl_data)
         df_rwis_all = pd.DataFrame(all)
         # df.to_csv("placeholder.csv")

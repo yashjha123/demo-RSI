@@ -86,7 +86,8 @@ def checkcache(results, filter = True):
                 'x':data['lon'],    
                 'y':data['lat'],
                 'PHOTO_URL':data['imgurl'],
-                "RSI": 0.4 #BUG
+                "RSI": 0.4, #BUG
+                'custom_data':{'url':data['imgurl'],'preds':None},
             }
         else:
             # print("You got this!")
@@ -95,6 +96,12 @@ def checkcache(results, filter = True):
             # print(res)
             # print(data['imgurl'])
             inp = getLabel(res)
+            pred = {
+                'prob_Bare': res[0],
+                'prob_Partly Snow Coverage': res[1],
+                'prob_Undefined': res[2],
+                'prob_Full Snow Coverage': res[3]
+            }
             dashcam = {
                 # 'name':data['cid'],
                 # 'date':data['utc_valid'],
@@ -107,6 +114,7 @@ def checkcache(results, filter = True):
                 'prob_Partly Snow Coverage': res[1],
                 'prob_Undefined': res[2],
                 'prob_Full Snow Coverage': res[3],
+                'custom_data': {'url':data['imgurl'],'preds':pred},
                 "RSI": 0.4 #BUG
             }
         dashcams.append(dashcam)
@@ -158,7 +166,6 @@ def checkrwiscache(results, filter=True):
 
     r = requests.post(url, json=data1) 
     result_dict = (r.json())['result']
-    print(result_dict)
     # estimate_ratios = result_dicte['estimate_ratio']
     # img_gen_masks = result_dicte['img_gen_masks']
     # img_src_masks = result_dicte['img_src_masks']
@@ -183,7 +190,7 @@ def checkrwiscache(results, filter=True):
                 'stid': data['cid'],
                 'lon':rwis_row[1],    
                 'lat':rwis_row[0],
-                'img_path':[img_urls[i], image_placeholder, image_placeholder], #img_urls
+                'img_path':{'url':img_urls[i], 'preds':[image_placeholder, image_placeholder]}, #img_urls
                 'RSC': category, # Predicted category
                 "RSI": estimate_ratio, #BUG
                 "stid+RSI": data['cid'] + "<br>" + str(estimate_ratio) 
@@ -207,7 +214,7 @@ def checkrwiscache(results, filter=True):
             'stid': data['cid'],
             'lon':rwis_row[1],    
             'lat':rwis_row[0],
-            'img_path':[img_urls[i], result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]], #img_urls
+            'img_path':{'url':img_urls[i], 'preds':[result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]]}, #img_urls
             'RSC': category, # Predicted category
             "RSI": estimate_ratio, #BUG
             "stid+RSI": data['cid'] + "<br>" + str(estimate_ratio) 
@@ -239,13 +246,13 @@ def grab_RWIS_data(todo):
     img_urls = []
     for x in todo:
         # print(x)
-        img_urls.append(x['imgurl'][0])
+        img_urls.append(x['imgurl'])
 
     data1 = {"img_urls": img_urls}
 
     r = requests.post(url, json=data1) 
     result_dict = (r.json())['result']
-    print(result_dict)
+    # print(result_dict)
     # estimate_ratios = result_dicte['estimate_ratio']
     # img_gen_masks = result_dicte['img_gen_masks']
     # img_src_masks = result_dicte['img_src_masks']
@@ -277,7 +284,7 @@ def grab_RWIS_data(todo):
             'stid': data['cid'],
             'lon':rwis_row[1],    
             'lat':rwis_row[0],
-            'img_path':[img_urls[i], result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]], #img_urls
+            'img_path':{'url':img_urls[i], 'preds':[result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]]}, #img_urls
             'RSC': category, # Predicted category
             "RSI": estimate_ratio, #BUG
             "stid+RSI": data['cid'] + "<br>" + str(estimate_ratio),
@@ -296,7 +303,6 @@ def grab_avl_data(results):
 
 
     url = ("http://127.0.0.1:8080/predictBatches")
-    print(results['data'])
     BATCH_SIZE = 20
     for i in tqdm(range(0,len(results['data']),BATCH_SIZE)):
         img_urls = [x['imgurl'] for x in results['data'][i:i+BATCH_SIZE]]
@@ -313,6 +319,13 @@ def grab_avl_data(results):
         # res = requests.get(AVL_RULE+data['imgurl']).json()["result"]
         res = result_dict[data['imgurl']]
         inp = getLabel(res)
+
+        pred = {
+            'prob_Bare': res[0],
+            'prob_Partly Snow Coverage': res[1],
+            'prob_Undefined': res[2],
+            'prob_Full Snow Coverage': res[3]
+        }
         dashcam = {
             # 'name':data['cid'],
             # 'date':data['utc_valid'],
@@ -325,6 +338,7 @@ def grab_avl_data(results):
             'prob_Partly Snow Coverage': res[1],
             'prob_Undefined': res[2],
             'prob_Full Snow Coverage': res[3],
+            'custom_data': {'url':data['imgurl'],'preds':pred},
             "RSI": 0.4 #BUG
         }
         dashcams.append(dashcam)
@@ -364,6 +378,12 @@ def grab_avl_data_v2(todo):
     #     # res = requests.get(AVL_RULE+data['imgurl']).json()["result"]
         res = result[img_url]
         inp = getLabel(res)
+        pred = {
+            'prob_Bare': res[0],
+            'prob_Partly Snow Coverage': res[1],
+            'prob_Undefined': res[2],
+            'prob_Full Snow Coverage': res[3]
+        }
         dashcam = {
             # 'name':data['cid'],
             # 'date':data['utc_valid'],
@@ -376,6 +396,7 @@ def grab_avl_data_v2(todo):
             'prob_Partly Snow Coverage': res[1],
             'prob_Undefined': res[2],
             'prob_Full Snow Coverage': res[3],
+            'custom_data': {'url':img_url,'preds':pred,"type":"AVL"},
             "RSI": 0.4 #BUG
         }
         dashcams.append(dashcam)
@@ -390,6 +411,12 @@ def getPredictForOneImage(img_url):
 
     res = (r.json())['result']
     inp = getLabel(res)
+    pred = {
+            'prob_Bare': res[0],
+            'prob_Partly Snow Coverage': res[1],
+            'prob_Undefined': res[2],
+            'prob_Full Snow Coverage': res[3]
+        }
     dashcam = {
         # 'name':data['cid'],
         # 'date':data['utc_valid'],
@@ -400,6 +427,7 @@ def getPredictForOneImage(img_url):
         'prob_Partly Snow Coverage': res[1],
         'prob_Undefined': res[2],
         'prob_Full Snow Coverage': res[3],
+        'custom_data': {'url':img_url,'preds':pred,"type":"AVL"},
     }
     # ret = {
     #     'prob_Bare': res[0],
