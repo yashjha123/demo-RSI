@@ -13,12 +13,20 @@ both_highways = (both_highways.to_crs('EPSG:4326'))
 
 import requests
 from datetime import date
+from db_handler.nicedb import NiceDB, NiceTable, BulkTable
+
+db = NiceDB()
+db.start()
+db.test()
 
 import requests
 import random
+
+SERVER_IP = "http://162.246.157.104:8080"
+
 BASE_URL = f'https://mesonet.agron.iastate.edu/'
 
-AVL_RULE = f"http://127.0.0.1:8080/predict?img_url="
+AVL_RULE = f"{SERVER_IP}/predict?img_url="
 
 def get_cameras(window_size, time):
     """
@@ -57,17 +65,22 @@ def getLabel(result):
     labels =['Bare','Partly Snow Coverage','Undefined','Full Snow Coverage']
     return labels[result.index(max(result))]
 
+disksave_bulk = BulkTable(db,"AVL_PRED",key="IMAGE_URL",value=["Bare","PartlySnowCoverage","Undefined","FullSnowCoverage"],high_load=True)
 def checkcache(results, filter = True):
     global both_highways
     img_urls = []
     for d in results['data']:
         img_urls.append(d['imgurl'])
     dashcams = []
-    url = ("http://127.0.0.1:8080/loadFromCache")
-
-    data = {"img_urls": img_urls}
-    r = requests.post(url, json=data)
-    result_dict = (r.json())['result']
+    db_vals = disksave_bulk[img_urls]
+    # data = {"img_urls": img_urls}
+    # r = requests.post(url, json=data)
+    result_dict = {}
+    for url in img_urls:
+        if url in db_vals:
+            result_dict[url] = db_vals[url]
+        else:
+            result_dict[url] = "None"
     for data in results['data']:
 
         if filter:
@@ -121,6 +134,7 @@ def checkcache(results, filter = True):
     return dashcams
 
 import pandas as pd
+rwis_disksave_bulk = BulkTable(db,"RWIS_PRED",key="IMAGE_URL",value=["Snow_Estimate_Ratio","SRC_MASK"],high_load=True)
 
 def checkrwiscache(results, filter=True):
     """ 
@@ -133,7 +147,6 @@ def checkrwiscache(results, filter=True):
     dashcams = []
     # TODO: -v uncomment this for caching implementation
     # url = ("http://127.0.0.1:8080/snow_estimate")
-    url = ("http://127.0.0.1:8080/snow_estimate_from_cache")
     # data = {"img_urls": img_urls}
     # r = requests.post(url, json=data)
     # result_dict = (r.json())['result']
@@ -163,9 +176,16 @@ def checkrwiscache(results, filter=True):
         img_urls.append(imgurl)
 
     data1 = {"img_urls": img_urls}
-
-    r = requests.post(url, json=data1) 
-    result_dict = (r.json())['result']
+    db_vals = rwis_disksave_bulk[img_urls]
+    result_dict = {}
+    for img_url in img_urls:
+        if img_url in db_vals:
+            out = db_vals[img_url]
+            result_dict[img_url] = [out[0],out[1].decode()]
+        else:
+            result_dict[img_url] = None
+    # r = requests.post(url, json=data1) 
+    # result_dict = (r.json())['result']
     # estimate_ratios = result_dicte['estimate_ratio']
     # img_gen_masks = result_dicte['img_gen_masks']
     # img_src_masks = result_dicte['img_src_masks']
@@ -229,7 +249,7 @@ def grab_RWIS_data(todo):
     dashcams = []
     # TODO: -v uncomment this for caching implementation
     # url = ("http://127.0.0.1:8080/snow_estimate")
-    url = ("http://127.0.0.1:8080/snow_estimate")
+    url = (f"{SERVER_IP}/snow_estimate")
     # data = {"img_urls": img_urls}
     # r = requests.post(url, json=data)
     # result_dict = (r.json())['result']
@@ -302,7 +322,7 @@ def grab_avl_data(results):
     result_dict = {}
 
 
-    url = ("http://127.0.0.1:8080/predictBatches")
+    url = (f"{SERVER_IP}/predictBatches")
     BATCH_SIZE = 20
     for i in tqdm(range(0,len(results['data']),BATCH_SIZE)):
         img_urls = [x['imgurl'] for x in results['data'][i:i+BATCH_SIZE]]
@@ -355,7 +375,7 @@ def grab_avl_data_v2(todo):
     result_dict = {}
 
 
-    url = ("http://127.0.0.1:8080/predictBatchesV2")
+    url = (f"{SERVER_IP}/predictBatchesV2")
     # print(results['data'])
     # print("IMG URLS",img_urls)
     # BATCH_SIZE = 20
@@ -406,7 +426,7 @@ def grab_avl_data_v2(todo):
 
 
 def getPredictForOneImage(img_url):
-    url = ("http://127.0.0.1:8080/predict")
+    url = (f"{SERVER_IP}/predict")
     r = requests.get(url+"?img_url="+img_url)
 
     res = (r.json())['result']
