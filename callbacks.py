@@ -1,10 +1,13 @@
-from datetime import datetime as dt
-from datetime import date, timedelta
+import datetime
+from datetime import date, timedelta, timezone
 import time
 import os
 from dash.exceptions import PreventUpdate
 
 # import plotly.graph_objects as go
+from pytz import timezone
+CENTRAL = timezone('US/Central')
+UTC = timezone('UTC')
 
 from statistics import mean
 from random import randint, shuffle
@@ -109,6 +112,25 @@ def display_page(pathname):
     else:
         return html.H5('You are looking at path = ' + pathname)
 
+@app.callback(Output("pick_date_time","disabled"),Input('live_button', 'on'))
+def toggle_live_mode(value):
+    return value
+
+@app.callback(Output("pick_date_time","value"), State("pick_date_time","value"), Input("auto_trigger", "n_intervals"))
+def refresh_data(pick_date_time,auto_trigger_intervals):
+    dt = datetime.datetime.now(CENTRAL)
+    utc_time = dt.replace(tzinfo=UTC).timestamp()
+
+    last_time_triggered_central = parse(pick_date_time)
+    last_time_triggered_utc = last_time_triggered_central.replace(tzinfo=UTC).timestamp()
+
+    print(utc_time - last_time_triggered_utc)
+    if last_time_triggered_utc == None or (utc_time - last_time_triggered_utc)>60:
+        print("New value for last_time_triggered",last_time_triggered_central)
+        # print("New value for last_time_triggered",utc_time-utc_time
+        return date.strftime(dt, "%Y-%m-%dT%H:%M")
+    # print("No update")
+    raise dash.exceptions.PreventUpdate
 # Background process call
 # @app.callback() 
 # @app.callback(Input("done_points","data"),Input("process_in_background","data"))
@@ -405,7 +427,7 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
     # print(triggered)
     rsc_colors = rsc_colors
 
-    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time),window=window) # TODO:
+    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time).replace(tzinfo=CENTRAL).astimezone(UTC),window=window) # TODO:
     print(df)
     # df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
 

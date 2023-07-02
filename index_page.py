@@ -10,6 +10,8 @@ import dash
 from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
+import dash_daq as daq
+
 # import dash_datetimepicker
 
 from dash.dependencies import Input, Output
@@ -139,6 +141,14 @@ def make_progress_graph(progress, total):
     )
     return progress_graph
 
+import datetime
+from datetime import date, timedelta, timezone
+from pytz import timezone
+central = timezone('US/Central')
+utc = timezone('UTC')
+dt = datetime.datetime.now(utc)
+time_in_cst = datetime.datetime.now(central)
+utc_time = dt.replace(tzinfo=utc).timestamp()
 
 def HomePage():
     layout = html.Div(
@@ -146,13 +156,14 @@ def HomePage():
             dcc.Store(id='trigger_on_click'),
             dcc.Store(id='process_in_background'),
             dcc.Interval(id="interval", interval=500),
+            dcc.Interval(id="auto_trigger", interval=30000, n_intervals=0),
             dbc.Row(
                 [
                     dbc.Col(
                         md=4,
                         children=[
                             dbc.Card(
-                                # style={'height': '5vh'},
+                                style={'display': 'flex','flex-direction':'row','justify-content': 'center'},
                                 children=[
                                     # dcc.DatePickerSingle(
                                     #     id="pick_date_time",
@@ -161,11 +172,21 @@ def HomePage():
                                     #     initial_visible_month=date(2023, 3, 30),
                                     #     date=date(2023, 5, 4),
                                     # ),
+                                    
                                     dcc.Input(
                                         id="pick_date_time",
                                         type="datetime-local",
                                         step="1",
-                                        value=date.strftime(date.today(), "%Y-%m-%dT%H:%M"),
+                                        value=date.strftime(time_in_cst, "%Y-%m-%dT%H:%M"),
+                                        style = {"flex":"3"},
+                                    ),
+                                    daq.BooleanSwitch(
+                                        on=True,
+                                        id="live_button",
+                                        label="Live",
+                                        labelPosition="left",
+                                        color="#119dff",
+                                        style={"flex":"1","display":"flex","align-items":"center", "justify-content": "center"}
                                     ),
                                 ]
                             ),
@@ -261,5 +282,5 @@ app.layout = PageLayout()
 
 ##----------------------------------------------------------
 if __name__ == "__main__":
-    app.run_server(debug=False,host='0.0.0.0',port=8050,dev_tools_props_check=False)
+    app.run_server(debug=True,host='0.0.0.0',port=8050,dev_tools_props_check=False)
 
