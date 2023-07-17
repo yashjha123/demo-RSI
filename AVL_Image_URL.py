@@ -72,15 +72,11 @@ def checkcache(results, filter = True):
     for d in results['data']:
         img_urls.append(d['imgurl'])
     dashcams = []
-    db_vals = disksave_bulk[img_urls]
+    # db_vals = disksave_bulk[img_urls]
     # data = {"img_urls": img_urls}
     # r = requests.post(url, json=data)
     result_dict = {}
-    for url in img_urls:
-        if url in db_vals:
-            result_dict[url] = db_vals[url]
-        else:
-            result_dict[url] = "None"
+    for url in img_urls: result_dict[url] = "None"
     for data in results['data']:
 
         if filter:
@@ -94,13 +90,14 @@ def checkcache(results, filter = True):
             dashcam = {
                 # 'name':data['cid'],
                 # 'date':data['utc_valid'],
-                'Predict': "Not labeled yet",
+                'hovertext': "Not labeled yet",
                 'LABEL': "Not labeled yet",
-                'x':data['lon'],    
-                'y':data['lat'],
+                'lon':data['lon'],    
+                'lat':data['lat'],
                 'PHOTO_URL':data['imgurl'],
                 "RSI": 0.4, #BUG
-                'custom_data':{'url':data['imgurl'],'preds':None},
+                'label':"AVL-"+"Not labeled yet",
+                'customdata':{'url':data['imgurl'],'preds':None},
             }
         else:
             # print("You got this!")
@@ -118,16 +115,17 @@ def checkcache(results, filter = True):
             dashcam = {
                 # 'name':data['cid'],
                 # 'date':data['utc_valid'],
-                'Predict': inp,
+                'hovertext': inp,
                 'LABEL': inp,
-                'x':data['lon'],    
-                'y':data['lat'],
+                'lon':data['lon'],    
+                'lat':data['lat'],
                 'PHOTO_URL':data['imgurl'],
                 'prob_Bare': res[0],
                 'prob_Partly Snow Coverage': res[1],
                 'prob_Undefined': res[2],
                 'prob_Full Snow Coverage': res[3],
-                'custom_data': {'url':data['imgurl'],'preds':pred},
+                'customdata': {'url':data['imgurl'],'preds':pred},
+                'label':"AVL-"+inp,
                 "RSI": 0.4 #BUG
             }
         dashcams.append(dashcam)
@@ -210,10 +208,11 @@ def checkrwiscache(results, filter=True):
                 'stid': data['cid'],
                 'lon':rwis_row[1],    
                 'lat':rwis_row[0],
-                'img_path':{'url':img_urls[i], 'preds':[image_placeholder, image_placeholder]}, #img_urls
+                'customdata':{'url':img_urls[i], 'preds':[image_placeholder, image_placeholder]}, #img_urls
                 'RSC': category, # Predicted category
                 "RSI": estimate_ratio, #BUG
-                "stid+RSI": data['cid'] + "<br>" + str(estimate_ratio) 
+                'label':"RWIS-"+category,
+                "hovertext": data['cid'] + "<br>" + str(estimate_ratio) 
             }
             dashcams.append(dashcam)
             continue
@@ -234,10 +233,11 @@ def checkrwiscache(results, filter=True):
             'stid': data['cid'],
             'lon':rwis_row[1],    
             'lat':rwis_row[0],
-            'img_path':{'url':img_urls[i], 'preds':[result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]]}, #img_urls
+            'customdata':{'url':img_urls[i], 'preds':[result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]]}, #img_urls
             'RSC': category, # Predicted category
             "RSI": estimate_ratio, #BUG
-            "stid+RSI": data['cid'] + "<br>" + str(estimate_ratio) 
+            'label':"RWIS-"+category,
+            "hovertext": data['cid'] + "<br>" + str(estimate_ratio) 
         }
         dashcams.append(dashcam)
     return dashcams
@@ -304,10 +304,11 @@ def grab_RWIS_data(todo):
             'stid': data['cid'],
             'lon':rwis_row[1],    
             'lat':rwis_row[0],
-            'img_path':{'url':img_urls[i], 'preds':[result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]]}, #img_urls
+            'customdata':{'url':img_urls[i], 'preds':[result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]]}, #img_urls
             'RSC': category, # Predicted category
+            'label':"RWIS-"+category,
             "RSI": estimate_ratio, #BUG
-            "stid+RSI": data['cid'] + "<br>" + str(estimate_ratio),
+            "hovertext": data['cid'] + "<br>" + str(estimate_ratio),
             "old_label":data['cid'] + "<br>" + str(0),
         }
         dashcams.append(dashcam)
@@ -338,6 +339,7 @@ def grab_avl_data(results):
         # inp = random.choice(['Full Snow Coverage','Partly Snow Coverage','Bare'])
         # res = requests.get(AVL_RULE+data['imgurl']).json()["result"]
         res = result_dict[data['imgurl']]
+
         inp = getLabel(res)
 
         pred = {
@@ -349,16 +351,17 @@ def grab_avl_data(results):
         dashcam = {
             # 'name':data['cid'],
             # 'date':data['utc_valid'],
-            'Predict': inp,
+            'hovertext': inp,
             'LABEL': inp,
-            'x':data['lon'],    
-            'y':data['lat'],
+            'lon':data['lon'],    
+            'lat':data['lat'],
             'PHOTO_URL':data['imgurl'],
             'prob_Bare': res[0],
             'prob_Partly Snow Coverage': res[1],
             'prob_Undefined': res[2],
             'prob_Full Snow Coverage': res[3],
-            'custom_data': {'url':data['imgurl'],'preds':pred},
+            'customdata': {'url':data['imgurl'],'preds':pred},
+            'label':"AVL-"+inp,
             "RSI": 0.4 #BUG
         }
         dashcams.append(dashcam)
@@ -387,9 +390,11 @@ def grab_avl_data_v2(todo):
         # print(x)
         img_urls.append(x['imgurl'])
     data = {"img_urls": img_urls}
+    print(len(img_urls))
     r = requests.post(url, json=data)
     result = (r.json())['result']
     # return (result)
+    print(len(result.keys()))
     # result_dict.update(result)
     i = 0
     for img_url in tqdm(result.keys()):
@@ -397,7 +402,11 @@ def grab_avl_data_v2(todo):
     #     # inp = random.choice(['Full Snow Coverage','Partly Snow Coverage','Bare'])
     #     # res = requests.get(AVL_RULE+data['imgurl']).json()["result"]
         res = result[img_url]
-        inp = getLabel(res)
+        if type(res) == str:
+            res = [0,0,0,0]
+            inp = "Failed"
+        else:
+            inp = getLabel(res)
         pred = {
             'prob_Bare': res[0],
             'prob_Partly Snow Coverage': res[1],
@@ -407,16 +416,17 @@ def grab_avl_data_v2(todo):
         dashcam = {
             # 'name':data['cid'],
             # 'date':data['utc_valid'],
-            'Predict': inp,
+            'hovertext': inp,
             'LABEL': inp,
-            'x':todo[i]['lon'],    
-            'y':todo[i]['lat'],
+            'lon':todo[i]['lon'],    
+            'lat':todo[i]['lat'],
             'PHOTO_URL':todo[i]['imgurl'],
             'prob_Bare': res[0],
             'prob_Partly Snow Coverage': res[1],
             'prob_Undefined': res[2],
             'prob_Full Snow Coverage': res[3],
-            'custom_data': {'url':img_url,'preds':pred,"type":"AVL"},
+            'customdata': {'url':img_url,'preds':pred,"type":"AVL"},
+            'label':"AVL-"+inp,
             "RSI": 0.4 #BUG
         }
         dashcams.append(dashcam)
@@ -441,13 +451,14 @@ def getPredictForOneImage(img_url):
         # 'name':data['cid'],
         # 'date':data['utc_valid'],
         'PHOTO_URL':img_url,
-        'Predict': inp,
+        'hovertext': inp,
         'LABEL': inp,
         'prob_Bare': res[0],
         'prob_Partly Snow Coverage': res[1],
         'prob_Undefined': res[2],
         'prob_Full Snow Coverage': res[3],
-        'custom_data': {'url':img_url,'preds':pred,"type":"AVL"},
+        'label':"AVL-"+inp,
+        'customdata': {'url':img_url,'preds':pred,"type":"AVL"},
     }
     # ret = {
     #     'prob_Bare': res[0],
