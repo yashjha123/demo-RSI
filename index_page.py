@@ -150,11 +150,41 @@ dt = datetime.datetime.now(utc)
 time_in_cst = datetime.datetime.now(central)
 utc_time = dt.replace(tzinfo=utc).timestamp()
 
+mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
+
+lat =  41.3322983
+lon = -93.7797012
+locations = [go.Scattermapbox(
+    lon=[lon],
+    lat=[lat],
+    mode='markers',
+    marker={'color': "red", 'size': 10, 'opacity': 0.6},
+    hoverinfo='text',
+    hovertext="Tests",
+    customdata=("URL",),
+    showlegend=True,
+    name="WOW",
+)]
+map_layout = go.Layout(
+    mapbox=go.layout.Mapbox(
+        accesstoken=mapbox_access_token,
+        center=go.layout.mapbox.Center(lat=lat, lon=lon),
+        style="dark",
+        zoom=8,
+        pitch=0,
+    ),
+    height=740,
+    margin=dict(l=15, r=15, t=15, b=15),
+    paper_bgcolor="#303030",
+    font_color="white"
+)
 def HomePage():
     layout = html.Div(
         [
             dcc.Store(id='trigger_on_click'),
             dcc.Store(id='process_in_background'),
+            dcc.Store(id='cache'),
+
             dcc.Interval(id="interval", interval=500),
             dcc.Interval(id="auto_trigger", interval=30000, n_intervals=0),
             dbc.Row(
@@ -259,7 +289,7 @@ def HomePage():
                                         ], id='while_loading'),
                                         dcc.Loading(dcc.Graph(
                                             id="AVL_map",
-                                            #figure=go.Figure(data=locations, layout=map_layout),
+                                            # figure=go.Figure(data=locations, layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
                                             # animate=True
                                         )),]
