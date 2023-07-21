@@ -22,7 +22,7 @@ db.test()
 import requests
 import random
 
-SERVER_IP = "http://127.0.0.1:8080"
+SERVER_IP = "http://162.246.157.104:8080"
 
 BASE_URL = f'https://mesonet.agron.iastate.edu/'
 

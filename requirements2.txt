@@ -1,0 +1,9 @@
+dash[diskcache]
+geopandas
+dash_bootstrap_components
+dash_daq
+dash_extensions
+pymysql
+sshtunnel
+Pillow
+tqdm

@@ -79,6 +79,7 @@ def init_data(pathname):
 @app.callback(Output("page-content", "children"),
               [Input("url", "pathname")])
 def display_page(pathname):
+    print(pathname)
     if pathname == '/':
         return index_page.HomePage()
     elif pathname == '/rsi':
@@ -173,7 +174,7 @@ def run_calculation(set_progress,todo):
             avl_todo.append(elem)
         elif elem['type'] ==  "rwis":
             rwis_todo.append(elem)
-    BATCH_SIZE = 12
+    BATCH_SIZE = 128
     progress = 0
     for i in range(0,len(rwis_todo),BATCH_SIZE):
         more = rwis_todo[i:i+BATCH_SIZE]
@@ -687,6 +688,7 @@ def plot_semi_fig(semi_model, semi_nugget, semi_range, semi_sill,maxlag,n_lags,d
      State('semi-sill', 'value'),
      State('picked_df_rwis', 'data')], )
 def update_rsi_map(n_clicks, updated_df, df_unknowns, semi_model, semi_nugget, semi_range, semi_sill, df_rwis):
+    print(updated_df)
     updated_df = pd.DataFrame.from_dict(updated_df)
     df_rwis = pd.DataFrame.from_dict(df_rwis) # 
     rsi_locations = [go.Scattermapbox(

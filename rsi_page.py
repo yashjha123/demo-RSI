@@ -26,7 +26,7 @@ from crop_cal_perc_white_black import *
 
 
 def NamedGroup(children, label, **kwargs):
-    return dbc.FormGroup(
+    return html.Div(
         [
             dbc.Label(label),
             children
