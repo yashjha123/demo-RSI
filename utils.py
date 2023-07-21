@@ -9,21 +9,6 @@ from AVL_Image_URL import get_cameras, grab_avl_data, checkcache, get_rwis_camer
 from datetime import date
 import datetime
 from datetime import timedelta
-# def load_data():
-#     # df = pd.read_csv("1_predicted_I35N_down_2019-01-12_07.csv")
-#     # df = pd.read_csv("test.csv")
-    
-
-
-#     time = (date.today()+timedelta(days=-6)).strftime("%Y-%m-%dT%H:%M")
-#     d = grab_avl_data(get_cameras("50",time))
-#     # print(d)
-#     df = pd.DataFrame(d)
-#     # print(df['RSI'])
-#     # print(p)
-
-
-#     return df
 
 def load_data(picked_date_time, window=360, placeholder = False):
     # df = pd.read_csv("1_predicted_I35N_down_2019  -01-12_07.csv")

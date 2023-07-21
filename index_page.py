@@ -19,6 +19,7 @@ from dash.dependencies import Input, Output
 from app import app
 import utils
 import callbacks
+import callbacks_rsi
 from utils import load_data
 
 from AVL_Image_URL import get_cameras, grab_avl_data
@@ -184,6 +185,7 @@ def HomePage():
             dcc.Store(id='trigger_on_click'),
             dcc.Store(id='process_in_background'),
             dcc.Store(id='cache'),
+            dcc.Store(id='rand'),
 
             dcc.Interval(id="interval", interval=500),
             dcc.Interval(id="auto_trigger", interval=30000, n_intervals=0),

@@ -40,7 +40,7 @@ mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaW
 # from dash_bootstrap_mapbox_v3.py
 # ---------------------------------------------------------------
 # Menu callback, set and return
-# Declair function  that connects other pages with content to container
+# Declare function that connects other pages with content to container
 
 df, df_rwis, df_unknown, df_rwis_all = utils.load_data(date.today(),placeholder=False)
 
@@ -403,8 +403,8 @@ def display_click_data(clickData):
 # callback for pie_chart
 @app.callback(
     [Output('dl_prediction', 'children'),Output('trigger_on_click','data')],
-    [Input('AVL_map', 'clickData'), Input('picked_df', 'data')],)
-def display_dl_prediction(clickData, df):
+    [Input('AVL_map', 'clickData')],)
+def display_dl_prediction(clickData):
     # avl_fig = (go.Figure(avl_fig))
     if clickData is None:
         print("AAA")
@@ -597,173 +597,3 @@ def display_dl_prediction(clickData, df):
                         )
                     ]
                     return to_return, False
-
-
-
-# from dash_bootstrap_mapbox_v3_rsi.py
-# callback for Semivariogram Figure
-#initialize semi parameters
-@app.callback(
-    [Output('semi-model', 'value'),
-     Output('semi-nugget', 'value'),
-     Output('semi-range', 'value'),
-     Output('semi-sill', 'value'),
-     Output('maxlag', 'data'),
-     Output('n_lags', 'data'),
-     Output('dists', 'data'),
-     Output('experiments', 'data'),
-     Output('updated_df', 'data'),],
-    [Input('df', 'data'),],)
-def initial_semi(df):
-    df = pd.DataFrame.from_dict(df)
-    updated_df = crop_cal_perc_white_black.ObtainAdjustedRSI(df=df)
-    nugget, rnge, sill, maxlag, n_lags, dists, experiments = utils.ConstructSemi(df=updated_df)
-    return ('Spherical',nugget,rnge,sill,maxlag,n_lags,dists,experiments,updated_df.to_dict())
-
-#recommended semi parameters
-@app.callback(
-    Output("semi_fig", "figure"),
-    [Input('semi-model', 'value'),
-     Input('semi-nugget', 'value'),
-     Input('semi-range', 'value'),
-     Input('semi-sill', 'value'),
-     Input('maxlag', 'data'),
-     Input('n_lags', 'data'),
-     Input('dists', 'data'),
-     Input('experiments', 'data'),],
-)
-def plot_semi_fig(semi_model, semi_nugget, semi_range, semi_sill,maxlag,n_lags,dists,experiments):
-    # print('Selected model type: ', semi_model)
-    # print('Input nugget: ', semi_nugget)
-    # print('Input range: ', semi_range)
-    # print('Input sill: ', semi_sill)
-    dists_semis = [[0, semi_nugget]] + [[(n_lag + 1) * (maxlag / n_lags),
-                                         utils.CalSemivariance(h=(n_lag + 1) * (maxlag / n_lags), n=semi_nugget,
-                                                               r=semi_range,
-                                                               s=semi_sill,
-                                                               model=semi_model[:3])]
-                                        for n_lag in range(n_lags)]
-    # print(dists_semis)
-    to_plot = {}
-    to_plot['dist'] = [dist_semi[0] for dist_semi in dists_semis]
-    to_plot['semi'] = [dist_semi[1] for dist_semi in dists_semis]
-    to_scatter = {}
-    to_scatter['dist'] = dists
-    # print(dists)
-    to_scatter['semi'] = experiments
-    # print(experiments)
-    fig = go.Figure()
-    # fig = px.line(to_plot, x="dist", y="semi", labels={'dist': 'Separation Distance (km)', 'semi': 'Semivariance'})
-    fig.add_trace(go.Scatter(x=to_plot['dist'], y=to_plot['semi'], mode='lines', name='Fitted Line'))
-    fig.add_trace(go.Scatter(x=to_scatter['dist'], y=to_scatter['semi'], mode='markers', name='Experimental'))
-    fig.update_layout(
-        paper_bgcolor="#303030",
-        plot_bgcolor="#303030",
-        font_color="white",
-        xaxis=dict(
-            showline=True,
-            showgrid=False,
-            showticklabels=True,
-            range=[0, max(to_plot['dist'])],
-        ),
-        yaxis=dict(
-            showgrid=False,
-            zeroline=False,
-            showline=False,
-            showticklabels=True,
-            # range=[0, max(to_plot['semi'])*1.2],
-        ),
-    )
-    return fig
-
-
-####callback for updating RSI Interpolated Map via button
-
-@app.callback(
-    Output('RSI_map', 'figure'),
-    [Input('rsi_interpolate', 'n_clicks'),Input('updated_df', 'data'),Input('df_unknown', 'data')],
-    [State('semi-model', 'value'),
-     State('semi-nugget', 'value'),
-     State('semi-range', 'value'),
-     State('semi-sill', 'value'),
-     State('picked_df_rwis', 'data')], )
-def update_rsi_map(n_clicks, updated_df, df_unknowns, semi_model, semi_nugget, semi_range, semi_sill, df_rwis):
-    print(updated_df)
-    updated_df = pd.DataFrame.from_dict(updated_df)
-    df_rwis = pd.DataFrame.from_dict(df_rwis) # 
-    rsi_locations = [go.Scattermapbox(
-        lon=updated_df['x'],
-        lat=updated_df['y'],
-        mode='markers',
-        marker={'size': 10, 'opacity': 1.0,
-                'color': updated_df['RSI'],
-                'colorscale': [[0, 'white'], [1, 'black']],
-                'cmin': 0,
-                'cmax': 1,
-                'showscale': True,
-                'colorbar': {'len': 0.8, 'title': '0 = icy/snowy; 1 = dry'}, },
-        hoverinfo='text',
-        hovertext=updated_df['RSI'],
-        customdata=updated_df['PHOTO_URL'],
-        showlegend=True,
-        name="Observed RSI",
-    )] + [go.Scattermapbox(
-        lon=df_rwis['lon'],
-        lat=df_rwis['lat'],
-        mode='markers',
-        marker={'color': 'red', 'size': 20, 'opacity': 0.6},
-        showlegend=True,
-        name='RWIS',
-    )]
-
-    rsi_map_layout = go.Layout(
-        mapbox=go.layout.Mapbox(
-            accesstoken=mapbox_access_token,
-            center=go.layout.mapbox.Center(lat=mean(updated_df["y"]), lon=mean(updated_df["x"])),
-            style="dark",
-            zoom=8,
-            pitch=0,
-        ),
-        height=740,
-        margin=dict(l=15, r=15, t=15, b=15),
-        paper_bgcolor="#303030",
-        font_color="white",
-    )
-
-    if n_clicks:
-        #time.sleep(2)
-        knowns = [[updated_df['pro_X'][i], updated_df['pro_Y'][i], updated_df['RSI'][i]] for i in range(len(updated_df))]
-        unknowns = [[df_unknown['pro_X'][i], df_unknown['pro_Y'][i]] for i in range(len(df_unknown))]
-        estimates, errors = utils.OK(samples=knowns,
-                                     unsampled=unknowns,
-                                     model=semi_model[:3], n=semi_nugget, r=semi_range * 1000, s=semi_sill)
-
-        estimates_xs, estimates_ys = utils.ConvertProjtoDegree(pro_xs=np.array(df_unknown['pro_X']),
-                                                               pro_ys=np.array(df_unknown['pro_Y']))
-        rsi_locations[0].marker['showscale'] = False
-        updated_locations = [go.Scattermapbox(
-            lon=np.concatenate([estimates_xs, np.array(updated_df['x'])]),
-            lat=np.concatenate([estimates_ys, np.array(updated_df['y'])]),
-            mode='markers',
-            marker={'size': 10, 'opacity': 0.9,
-                    'color': np.concatenate([estimates, np.array(updated_df['RSI'])]),
-                    'colorscale': [[0, 'white'],[1, 'black']],
-                    'cmin': 0,
-                    'cmax': 1,
-                    'showscale': True,
-                    'colorbar': {'len': 0.8, 'title': '0 = icy/snowy; 1 = dry'},},
-            hoverinfo='text',
-            hovertext=np.concatenate([estimates, np.array(updated_df['RSI'])]),
-            showlegend=True,
-            name="Estimated RSI",
-        )] + rsi_locations
-    else:
-        updated_locations = rsi_locations
-
-    fig = go.Figure(data=updated_locations, layout=rsi_map_layout)
-
-    # Return figure
-    return fig
-
-
-
