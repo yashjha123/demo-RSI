@@ -57,23 +57,21 @@ rsc_labels = ['Full Snow Coverage',
               'Bare',
               'Undefined',
               'Failed']
-data = [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),rsc_colors]
+# data = [rsc_colors]
 
-@app.callback([Output('df', 'data'),Output('df_rwis', 'data'),
-               Output('df_unknown', 'data'),Output('df_rwis_all', 'data'),
-               Output('rsc_colors', 'data'),],
-              [Input("url", "pathname")],)
-def init_data(pathname):
-    # data = []
+# @app.callback([Output('rsc_colors', 'data'),],
+#               [Input("url", "pathname")],)
+# def init_data(pathname):
+#     # data = []
 
-    if pathname == '/':
-        return data
-    elif pathname == '/rsi':
-        return data
-    elif pathname == '/spatial_mapping':
-        return data
-    else:
-        return data
+#     if pathname == '/':
+#         return data
+#     elif pathname == '/rsi':
+#         return data
+#     elif pathname == '/spatial_mapping':
+#         return data
+#     else:
+#         return data
 
 
 @app.callback(Output("page-content", "children"),
@@ -235,19 +233,27 @@ def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
     ) for rsc_type,df_sub in df_rwis_subs]
 
     locations = avl_locations + rwis_locations
-    return locations
+    
+    # For RSI prediction
+    avl_points = df[["RSI","lon",'lat']]
+    pro_X, pro_Y = utils.ConvertDegreetoProj(longs=np.array(avl_points["lon"]),
+                             lats=np.array(avl_points["lat"]))
+    avl_points["pro_X"] = pro_X
+    avl_points["pro_Y"] = pro_Y
+
+    return avl_points, locations
 
 #callback for the AVL points map
 #to determine the file
 # TODO: update for toggleable filter button
 @app.callback(
     #Output('dd-output-container', 'children'),
-    [Output('picked_df', 'data'),Output('picked_df_rwis', 'data'),Output('picked_df_unknown', 'data'),
-     Output('picked_df_rwis_all', 'data'),Output('AVL_map', 'figure'),Output('process_in_background','data')],
-    [Input('slider', 'value'),Input('pick_date_time', 'value'),Input('rsc_colors', 'data')],
-    [State('AVL_map', 'figure')] 
+    [Output('picked_df_rwis', 'data'),Output('avl_points','data'),
+     Output('AVL_map', 'figure'),Output('process_in_background','data')],
+    [Input('slider', 'value'),Input('pick_date_time', 'value')],
 )
-def load_map(window, pick_date_time, rsc_colors, prev_fig):
+def load_map(window, pick_date_time):
+    global rsc_colors
     triggered_id = ctx.triggered_id
     # if ctx.t
     print("TRIGGER ID",triggered_id)
@@ -286,15 +292,16 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
         font_color="white",
         # uirevision=True
     )
-    locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
+    avl_points, locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
+    # todo: implement a template_locations variables to remove redundance data packets
     # print(locations)
-    if len(locations):
-        figure = go.Figure(data=locations, layout=map_layout)
-    else:
-        df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time), placeholder=False) # TODO:
-        locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
-        figure = go.Figure(data=locations, layout=map_layout)
-        todo = "UsePlaceholder"
+    # if len(locations):
+    figure = go.Figure(data=locations, layout=map_layout)
+    # else:
+    #     df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time), placeholder=False) # TODO:
+    #     locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
+    #     figure = go.Figure(data=locations, layout=map_layout)
+    #     todo = "UsePlaceholder"
     # figure.add
     # ptr = {'curveNumber': 1, 'pointNumber': 0, 'pointIndex': 0, 'lon': -93.8417, 'lat': 40.73867, 'customdata': '1_rwis_imgs_masks\\IDOT-026-00_202001191426img.jpg', 'hovertext': 'RLEI4', 'bbox': {'x0': 451.9141511111087, 'x1': 453.9141511111087, 'y0': 675.3332477751857, 'y1': 677.3332477751857}}
     # print(prev_fig)
@@ -303,15 +310,17 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
     #     for x in range(len(figure.data)):
     #         ret['data'].append(figure.data[x])
     #     figure = ret
-
+    # for plt in df:
+    #     avl_points.append({'type':'avl','lon':plt['lon'],'lat':plt['lat'],'imgurl':plt})
     if len(df) > 0:
         for plt in (df[df['hovertext'] == "Not labeled yet"]).to_dict('records'):
             todo.append({'type':"avl",'lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['PHOTO_URL']})
+            
     if len(df_rwis_all) >0:
         for plt in (df_rwis_all[df_rwis_all['RSC'] == "Waiting..."]).to_dict('records'):
             todo.append({'type':'rwis','cid':plt['stid'],'lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['customdata']['url']})
     # print("Figure looks like",figure)
-    return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),figure,Serverside(todo)]
+    return [df_rwis.to_dict(),avl_points.to_dict(),figure,Serverside(todo)]
 
 
 clientside_callback(
@@ -474,21 +483,20 @@ def display_dl_prediction(clickData):
             return to_return, False
         else:
             print("DDD")
-            print(the_link)
+            # print(the_link)
 
             img_url = the_link['url']
             if 'SnowPlow' in img_url or 'idot_trucks' in img_url:
                 print("EE")
 
                 try:
-                    df = pd.DataFrame.from_dict(df)
                     # try:
                     if the_link['preds'] == None:
                         print("WE AREN'T LABELLED YET")
                         values = []
                         labels = rsc_labels
                         classes = getPredictForOneImage(img_url)
-                        print(classes)
+                        # print(classes)
                         for label in labels:
                             values.append(
                                 round(classes['prob_' + label], 3))
@@ -512,7 +520,7 @@ def display_dl_prediction(clickData):
                             font_color="white",
                         )
                         
-                        print(classes)
+                        # print(classes)
                         to_return = [
                             dbc.CardBody(
                                 dcc.Graph(

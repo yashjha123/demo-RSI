@@ -106,15 +106,16 @@ banner = html.Div(
                 ),
                 # dcc.Store stores the intermediate value
                 dcc.Store(id='df'),
-                dcc.Store(id='df_rwis'),
+                # dcc.Store(id='df_rwis'),
                 dcc.Store(id='df_unknown'),
-                dcc.Store(id='df_rwis_all'),
+                # dcc.Store(id='df_rwis_all'),
                 dcc.Store(id='rsc_colors'),
 
-                dcc.Store(id='picked_df'),
                 dcc.Store(id='picked_df_rwis'),
-                dcc.Store(id='picked_df_unknown'),
-                dcc.Store(id='picked_df_rwis_all'),
+
+                dcc.Store(id='avl_points', storage_type="session"),
+                dcc.Store(id='rwis_points', storage_type="session"),
+
             ],
         ),
     ],

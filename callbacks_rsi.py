@@ -55,14 +55,13 @@ clientside_callback(
      Output('maxlag', 'data'),
      Output('n_lags', 'data'),
      Output('dists', 'data'),
-     Output('experiments', 'data'),
-     Output('updated_df', 'data'),],
-    [Input('df', 'data'),],)
-def initial_semi(df):
-    df = pd.DataFrame.from_dict(df)
-    updated_df = crop_cal_perc_white_black.ObtainAdjustedRSI(df=df)
-    nugget, rnge, sill, maxlag, n_lags, dists, experiments = utils.ConstructSemi(df=updated_df)
-    return ('Spherical',nugget,rnge,sill,maxlag,n_lags,dists,experiments,updated_df.to_dict())
+     Output('experiments', 'data')],
+    [Input('avl_points', 'data'),],)
+def initial_semi(avl_points): # NOTE: This reconstructs semi whenever new data is loaded
+    avl_df = pd.DataFrame.from_dict(avl_points)
+    # updated_df = crop_cal_perc_white_black.ObtainAdjustedRSI(df=df)
+    nugget, rnge, sill, maxlag, n_lags, dists, experiments = utils.ConstructSemi(df=avl_df)
+    return ('Spherical',nugget,rnge,sill,maxlag,n_lags,dists,experiments)
 
 #recommended semi parameters
 @app.callback(
@@ -122,35 +121,36 @@ def plot_semi_fig(semi_model, semi_nugget, semi_range, semi_sill,maxlag,n_lags,d
 
 
 ####callback for updating RSI Interpolated Map via button
-
+# TODO: We might need to use Inputs instead of States
 @app.callback(
     Output('RSI_map', 'figure'),
-    [Input('rsi_interpolate', 'n_clicks'),Input('updated_df', 'data'),Input('df_unknown', 'data')],
+    [Input('rsi_interpolate', 'n_clicks'),Input('avl_points', 'data')],
     [State('semi-model', 'value'),
      State('semi-nugget', 'value'),
      State('semi-range', 'value'),
      State('semi-sill', 'value'),
      State('picked_df_rwis', 'data')],)
-def update_rsi_map(n_clicks, updated_df, df_unknown, semi_model, semi_nugget, semi_range, semi_sill, df_rwis):
-    print(updated_df)
-    updated_df = pd.DataFrame.from_dict(updated_df)
+def update_rsi_map(n_clicks, avl_points, semi_model, semi_nugget, semi_range, semi_sill, df_rwis):
+    df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv') # unknown RWIS data (location, time, for interpolation)
+    avl_points = pd.DataFrame.from_dict(avl_points)
+    print(avl_points)
     df_rwis = pd.DataFrame.from_dict(df_rwis) # 
     rsi_locations = [go.Scattermapbox(
-        lon=updated_df['x'],
-        lat=updated_df['y'],
+        lon=avl_points['lon'],
+        lat=avl_points['lat'],
         mode='markers',
         marker={'size': 10, 'opacity': 1.0,
-                'color': updated_df['RSI'],
+                'color': avl_points['RSI'],
                 'colorscale': [[0, 'white'], [1, 'black']],
                 'cmin': 0,
                 'cmax': 1,
                 'showscale': True,
                 'colorbar': {'len': 0.8, 'title': '0 = icy/snowy; 1 = dry'}, },
         hoverinfo='text',
-        hovertext=updated_df['RSI'],
-        customdata=updated_df['PHOTO_URL'],
+        hovertext=avl_points['RSI'],
+        customdata=avl_points['RSI'],
         showlegend=True,
-        name="Observed RSI",
+        name="Observed RSI", # Mobile locations
     )] + [go.Scattermapbox(
         lon=df_rwis['lon'],
         lat=df_rwis['lat'],
@@ -163,7 +163,7 @@ def update_rsi_map(n_clicks, updated_df, df_unknown, semi_model, semi_nugget, se
     rsi_map_layout = go.Layout(
         mapbox=go.layout.Mapbox(
             accesstoken=mapbox_access_token,
-            center=go.layout.mapbox.Center(lat=mean(updated_df["y"]), lon=mean(updated_df["x"])),
+            center=go.layout.mapbox.Center(lon=mean(avl_points['lon']),lat=mean(avl_points['lat'])), 
             style="dark",
             zoom=8,
             pitch=0,
@@ -176,7 +176,7 @@ def update_rsi_map(n_clicks, updated_df, df_unknown, semi_model, semi_nugget, se
 
     if n_clicks:
         #time.sleep(2)
-        knowns = [[updated_df['pro_X'][i], updated_df['pro_Y'][i], updated_df['RSI'][i]] for i in range(len(updated_df))]
+        knowns = [[avl_points['pro_X'][i], avl_points['pro_Y'][i], avl_points['RSI'][i]] for i in range(len(avl_points))] # TODO: Update this command to use python's pandas dataframe
         unknowns = [[df_unknown['pro_X'][i], df_unknown['pro_Y'][i]] for i in range(len(df_unknown))]
         estimates, errors = utils.OK(samples=knowns,
                                      unsampled=unknowns,
@@ -186,18 +186,18 @@ def update_rsi_map(n_clicks, updated_df, df_unknown, semi_model, semi_nugget, se
                                                                pro_ys=np.array(df_unknown['pro_Y']))
         rsi_locations[0].marker['showscale'] = False
         updated_locations = [go.Scattermapbox(
-            lon=np.concatenate([estimates_xs, np.array(updated_df['x'])]),
-            lat=np.concatenate([estimates_ys, np.array(updated_df['y'])]),
+            lon=np.concatenate([estimates_xs, np.array(avl_points['lon'])]),
+            lat=np.concatenate([estimates_ys, np.array(avl_points['lat'])]),
             mode='markers',
             marker={'size': 10, 'opacity': 0.9,
-                    'color': np.concatenate([estimates, np.array(updated_df['RSI'])]),
+                    'color': np.concatenate([estimates, np.array(avl_points['RSI'])]),
                     'colorscale': [[0, 'white'],[1, 'black']],
                     'cmin': 0,
                     'cmax': 1,
                     'showscale': True,
                     'colorbar': {'len': 0.8, 'title': '0 = icy/snowy; 1 = dry'},},
             hoverinfo='text',
-            hovertext=np.concatenate([estimates, np.array(updated_df['RSI'])]),
+            hovertext=np.concatenate([estimates, np.array(avl_points['RSI'])]),
             showlegend=True,
             name="Estimated RSI",
         )] + rsi_locations
