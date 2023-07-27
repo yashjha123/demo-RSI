@@ -36,10 +36,13 @@ def load_data(picked_date_time, window=360, placeholder = False):
 
 
 from pyproj import Proj, transform
+from pyproj import Transformer
 
 
 def ConvertProjtoDegree(pro_xs=[], pro_ys=[]):
     ###project coordinates into meters
+    print(pro_xs)
+    print(pro_ys)
     inProj = Proj(init='epsg:26915')  # NAD83 / UTM zone 15N
     outProj = Proj(init='epsg:4269')  # NAD83
 
@@ -50,11 +53,12 @@ def ConvertProjtoDegree(pro_xs=[], pro_ys=[]):
 
 def ConvertDegreetoProj(lats=[], longs=[]):
     ###project coordinates into meters
-    outProj = Proj(init='epsg:26915')  # NAD83 / UTM zone 15N
-    inProj = Proj(init='epsg:4269')  # NAD83
+    print("VALUESSS ARE NICE",lats,longs)
+    # outProj = Proj(init='epsg:26915')  # NAD83 / UTM zone 15N
+    # inProj = Proj(init='epsg:4269')  # NAD83
 
-    
-    xs, ys = transform(inProj, outProj, lats, longs )
+    xs,ys = Transformer.from_crs("EPSG:4269","EPSG:26915").transform(lats,longs)
+    # xs, ys = transform(inProj, outProj, lats, longs )
     print(xs,ys)
     return xs, ys
 
@@ -83,19 +87,21 @@ def ObtainMaxDistance(xys):
             dist = Eudist(xy, cxy)
             dists.append(dist)
     dists.sort(reverse=True)
-    print(dists[:10])
+    print("DESTINATIONS",dists[:10])
     return dists[:10]
 
 
 def ConstructSemi(df={}):
+    if df.empty:
+        return [0.01,60.99,0.03, 279498.4527227931/1000,10,[],[]]
     ###project coordinates into meters
     a = datetime.datetime.now()
 
     inProj = Proj(init='epsg:4269')  # NAD83
     outProj = Proj(init='epsg:26915')  # NAD83 / UTM zone 15N
 
-    xs = np.array(df['x'])
-    ys = np.array(df['y'])
+    xs = np.array(df['lon'])
+    ys = np.array(df['lat'])
     b = datetime.datetime.now()
     print("FIRST",b-a)
     pro_xs, pro_ys = transform(inProj, outProj, xs, ys)
@@ -106,7 +112,7 @@ def ConstructSemi(df={}):
     df['pro_X'] = pro_xs
     df['pro_Y'] = pro_ys
     values = df['RSI']
-
+    values[-1] -= 0.001
     xys = []
     print("FORO")
     xys = list(zip(pro_xs,pro_ys))
@@ -115,44 +121,13 @@ def ConstructSemi(df={}):
         # xys.append([pro_xs[i], pro_ys[i]])
     # d = print("THIRD",)
 
-    # dists = 279498.4527227931#ObtainMaxDistance(xys)
-    max_dist = 279498.4527227931#dists[0]
+    dists = ObtainMaxDistance(xys)
+    max_dist = dists[0]
 
     coordinates = np.array(xys)
     maxlag = max_dist / 2
 
-    # V = Variogram_roadist.Variogram_roadist(coordinates=coordinates,
-    #                                     values=values,
-    #                                     use_nugget=True,
-    #                                     model='spherical',
-    #                                     estimator='matheron',
-    #                                     bin_func='uniform',
-    #                                     maxlag=maxlag)
-    # print(values)
-    print("ECO")
     e = datetime.datetime.now()
-    """
-
-        V = Variogram(coordinates=coordinates,
-                    values=values,
-                    use_nugget=True,
-                    model='spherical',
-                    estimator='matheron',
-                    bin_func='uniform',
-                    maxlag=maxlag)
-
-        semi_infos = V.describe()
-        rnge = round(semi_infos['effective_range'] / 1000, 2)
-        psill = round(semi_infos['sill'], 2)
-        nugget = round(semi_infos['nugget'], 2)
-        sill = round(semi_infos['sill'] + semi_infos['nugget'], 2)
-        n_lags = V.n_lags
-        dists = V.bins / 1000
-        experiments = V.experimental
-        f = datetime.datetime.now()
-        print(f-e)
-        print("FOMO")
-    """
     V = Variogram(coordinates=coordinates,
                   values=values,
                   use_nugget=True,
@@ -162,6 +137,7 @@ def ConstructSemi(df={}):
                   maxlag=maxlag)
 
     semi_infos = V.describe()
+    print(semi_infos)
     rnge = round(semi_infos['effective_range'] / 1000, 2)
     # rnge = 60.99
     psill = round(semi_infos['sill'], 2)
@@ -173,13 +149,11 @@ def ConstructSemi(df={}):
     n_lags = V.n_lags
     # n_lags = 10
     dists = V.bins / 1000
-    # dists = [4.14540447, 8.21966244, 13.14269996, 18.55741696, 24.02338575, 30.49752274, 
-    #          37.83630649, 45.28761025, 53.05467633, 60.99468264]
+    # placeholder_dists = []
     experiments = V.experimental
-    # experiments = [0.01293204, 0.01796298, 0.01750724, 0.02161075, 0.03031476, 0.02562167,
-    #                0.02634403, 0.0252123, 0.02833866, 0.03625549]
+    # placeholder_experiments = []
 
-
+    
     return nugget, rnge, sill, maxlag / 1000, n_lags, dists, experiments
 
 
@@ -240,64 +214,35 @@ def EuDistance(x1, y1, x2, y2):
     return dist
 
 
-###calculate the weights
-def CalWeights_norm(samples=[], unsampled=[], model='Sph', n=0, r=10, s=1):
-    # Calculate G - between measured points
-    Gs = []
-    for sample in samples:
-        G = []
-        for sample2 in samples:
-            semi = CalSemivariance(point1=sample, point2=sample2, model='Sph', n=n, r=r, s=s)
-            cov = s - semi
-            G.append(semi)
-        G.append(1)
-        Gs.append(G)
-    Gs_last_row = [1 for sample in samples]
-    Gs_last_row.append(0)
-    Gs.append(Gs_last_row)
-
-    # Calculate g (covariances) - between measured and unmeasured points
-    gs = []
-    for ea_unsample in unsampled:
-        g = []
-        for sample in samples:
-            semi = CalSemivariance(point1=sample, point2=ea_unsample, model='Sph', n=n, r=r, s=s)
-            cov = s - semi
-            g.append(semi)
-        g.append(1)
-        gs.append(g)
-    gs = np.array(gs)
-
-    W = np.dot(np.linalg.inv(Gs), gs.transpose())
-
-    # Calculate the estimation variance
-    gs = []
-    for ea_unsample in unsampled:
-        g = []
-        for sample in samples:
-            semi = CalSemivariance(point1=sample, point2=ea_unsample, model='Sph', n=n, r=r, s=s)
-            g.append(semi)
-        g.append(1)
-        gs.append(g)
-    # print(gs)
-    error = np.dot(gs, W)
-
-    errors = []
-    for i in range(len(unsampled)):
-        errors.append(error[i, i])
-
-    return W, errors
-
+import pykrige.kriging_tools as kt
+from pykrige.ok import OrdinaryKriging
 
 def OK(samples=[], unsampled=[], model='Sph', n=0, r=10, s=1):
-    W, errors = CalWeights_norm(samples=samples, unsampled=unsampled, model=model, n=n, r=r, s=s)
-    W = W.tolist()
-    del W[-1]
-    W = np.array(W)
+    embed = {
+        "Sph":"spherical",
+        "Gau":"gaussian",
+        "Exp":"exponential"
+    }
+    samples = np.array(samples)
+    unsampled = np.array(unsampled)
+    myKriging = OrdinaryKriging(
+        samples[:, 0],
+        samples[:, 1],
+        samples[:, 2],
+        variogram_model=embed[model],
+        verbose=True,
+        variogram_parameters={'sill': s, 'range': r, 'nugget': n},
+        enable_plotting=False,
+    )
+    estimates, ss  = myKriging.execute(style="points",xpoints=unsampled[:,0],ypoints=unsampled[:,1])
+    # W, errors = CalWeights_norm(samples=samples, unsampled=unsampled, model=model, n=n, r=r, s=s)
+    # W = W.tolist()
+    # del W[-1]
+    # W = np.array(W)
 
-    samples_vals = np.array([[sample[-1] for sample in samples]])
+    # samples_vals = np.array([[sample[-1] for sample in samples]])
 
-    estimates = np.dot(np.transpose(W), np.transpose(samples_vals))
-    estimates = estimates.reshape(len(estimates), )
-
+    # estimates = np.dot(np.transpose(W), np.transpose(samples_vals))
+    # estimates = estimates.reshape(len(estimates), )
+    errors = None
     return estimates, errors

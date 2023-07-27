@@ -191,7 +191,7 @@ def run_calculation(set_progress,todo):
 
 def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
     df_subs = []
-    # print
+    print(df)
     
     if len(df) > 0:
         for rsc_type in list(rsc_colors.keys()):
@@ -235,11 +235,14 @@ def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
     locations = avl_locations + rwis_locations
     
     # For RSI prediction
-    avl_points = df[["RSI","lon",'lat']]
-    pro_X, pro_Y = utils.ConvertDegreetoProj(longs=np.array(avl_points["lon"]),
+    if not df.empty:
+        avl_points = df[["RSI","lon",'lat','customdata']]
+        pro_X, pro_Y = utils.ConvertDegreetoProj(longs=np.array(avl_points["lon"]),
                              lats=np.array(avl_points["lat"]))
-    avl_points["pro_X"] = pro_X
-    avl_points["pro_Y"] = pro_Y
+        avl_points["pro_X"] = pro_X
+        avl_points["pro_Y"] = pro_Y
+    else:
+        avl_points = pd.DataFrame(columns=['RSI','lon','lat','pro_X','pro_Y','customdata'])
 
     return avl_points, locations
 
@@ -281,7 +284,7 @@ def load_map(window, pick_date_time):
     map_layout = go.Layout(
         mapbox=go.layout.Mapbox(
             accesstoken=mapbox_access_token,
-            center=go.layout.mapbox.Center(lat=41.841316666666664, lon=-93.10251666666667),
+            center=go.layout.mapbox.Center(lat=41.841, lon=-93.102),
             style="dark",
             zoom=7,
             pitch=0,
@@ -325,7 +328,8 @@ def load_map(window, pick_date_time):
 
 clientside_callback(
     """
-    async function(new_points,prev_fig) {
+    async function(new_points,prev_fig,avl_points) {
+        console.log("AVL",avl_points)
         console.log(prev_fig)
         console.log(new_points)
         var indices = new Object();
@@ -341,7 +345,18 @@ clientside_callback(
             if(new_point["label"].startsWith("AVL")){
                 index_of_blank_data = index_of_blank_AVL;
                 const img_url = new_point['PHOTO_URL']
-                ind = prev_fig['data'][index_of_blank_data]['customdata'].map((e)=>e.url).indexOf(img_url)                
+                ind = prev_fig['data'][index_of_blank_data]['customdata'].map((e)=>e.url).indexOf(img_url)
+
+
+                /* Updating the AVL
+                console.log(avl_points['customdata'])
+                console.log(Object.keys(avl_points['customdata']).filter((key)=>avl_points['customdata'][key].url==img_url))
+                 */
+                const index_inside_avlp = Object.keys(avl_points['customdata']).filter((key)=>avl_points['customdata'][key].url==img_url)[0]
+                avl_points['RSI'][index_inside_avlp] = new_point['RSI']
+
+
+
             } else {
                 console.log(new_point["label"])
                 index_of_blank_data = index_of_blank_RWIS;
@@ -368,12 +383,14 @@ clientside_callback(
             }
         })
         console.log(prev_fig)
-        return Object.assign({}, prev_fig); 
+        console.log(avl_points)
+        
+        return (Object.assign({}, prev_fig),avl_points);
     }
     """,
-    Output("AVL_map","figure",allow_duplicate=True),
+    [Output("AVL_map","figure",allow_duplicate=True),Output('avl_points','data',allow_duplicate=True)],
     Input('cache', 'data'),
-    State("AVL_map","figure"),
+    [State("AVL_map","figure"),State('avl_points','data')],
     prevent_initial_call=True
 )
 # @app.callback([Output("AVL_map","figure",allow_duplicate=True)],[Input("cache","data")],prevent_initial_call=True,)

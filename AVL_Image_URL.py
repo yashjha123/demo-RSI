@@ -13,20 +13,27 @@ both_highways = (both_highways.to_crs('EPSG:4326'))
 
 import requests
 from datetime import date
-from db_handler.nicedb import NiceDB, NiceTable, BulkTable
-
-db = NiceDB()
-db.start()
-db.test()
 
 import requests
 import random
 
-SERVER_IP = "http://162.246.157.104:8080"
+SERVER_IP = "http://127.0.0.1:8080"
 
 BASE_URL = f'https://mesonet.agron.iastate.edu/'
 
 AVL_RULE = f"{SERVER_IP}/predict?img_url="
+
+def getRSI(lbl):
+    ret = 0.0
+    if lbl == 'Full Snow Coverage':
+        ret = 0.35
+    elif lbl == 'Partly Snow Coverage':
+        ret = 0.8 - (0.8 - 0.5) * 0.4
+        # updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * perc_white
+        #updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * random.random()
+    elif lbl == 'Bare':
+        ret = 0.9
+    return ret
 
 def get_cameras(window_size, time):
     """
@@ -65,7 +72,6 @@ def getLabel(result):
     labels =['Bare','Partly Snow Coverage','Undefined','Full Snow Coverage']
     return labels[result.index(max(result))]
 
-disksave_bulk = BulkTable(db,"AVL_PRED",key="IMAGE_URL",value=["Bare","PartlySnowCoverage","Undefined","FullSnowCoverage"],high_load=True)
 def checkcache(results, filter = True):
     global both_highways
     img_urls = []
@@ -95,7 +101,7 @@ def checkcache(results, filter = True):
                 'lon':data['lon'],    
                 'lat':data['lat'],
                 'PHOTO_URL':data['imgurl'],
-                "RSI": 0.4, #BUG
+                "RSI": getRSI("Not labeled yet"), #BUG
                 'label':"AVL-"+"Not labeled yet",
                 'customdata':{'url':data['imgurl'],'preds':None},
             }
@@ -106,6 +112,7 @@ def checkcache(results, filter = True):
             # print(res)
             # print(data['imgurl'])
             inp = getLabel(res)
+
             pred = {
                 'prob_Bare': res[0],
                 'prob_Partly Snow Coverage': res[1],
@@ -126,13 +133,12 @@ def checkcache(results, filter = True):
                 'prob_Full Snow Coverage': res[3],
                 'customdata': {'url':data['imgurl'],'preds':pred},
                 'label':"AVL-"+inp,
-                "RSI": 0.4 #BUG
+                "RSI": getRSI(inp) #BUG
             }
         dashcams.append(dashcam)
     return dashcams
 
 import pandas as pd
-rwis_disksave_bulk = BulkTable(db,"RWIS_PRED",key="IMAGE_URL",value=["Snow_Estimate_Ratio","SRC_MASK"],high_load=True)
 
 def checkrwiscache(results, filter=True):
     """ 
@@ -174,14 +180,10 @@ def checkrwiscache(results, filter=True):
         img_urls.append(imgurl)
 
     data1 = {"img_urls": img_urls}
-    db_vals = rwis_disksave_bulk[img_urls]
+    # db_vals = rwis_disksave_bulk[img_urls]
     result_dict = {}
     for img_url in img_urls:
-        if img_url in db_vals:
-            out = db_vals[img_url]
-            result_dict[img_url] = [out[0],out[1].decode()]
-        else:
-            result_dict[img_url] = None
+        result_dict[img_url] = None
     # r = requests.post(url, json=data1) 
     # result_dict = (r.json())['result']
     # estimate_ratios = result_dicte['estimate_ratio']
@@ -362,7 +364,7 @@ def grab_avl_data(results):
             'prob_Full Snow Coverage': res[3],
             'customdata': {'url':data['imgurl'],'preds':pred},
             'label':"AVL-"+inp,
-            "RSI": 0.4 #BUG
+            "RSI": getRSI(inp) #BUG
         }
         dashcams.append(dashcam)
 
@@ -427,7 +429,7 @@ def grab_avl_data_v2(todo):
             'prob_Full Snow Coverage': res[3],
             'customdata': {'url':img_url,'preds':pred,"type":"AVL"},
             'label':"AVL-"+inp,
-            "RSI": 0.4 #BUG
+            "RSI": getRSI(inp) #BUG
         }
         dashcams.append(dashcam)
         i+=1

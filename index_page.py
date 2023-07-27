@@ -109,7 +109,6 @@ banner = html.Div(
                 # dcc.Store(id='df_rwis'),
                 dcc.Store(id='df_unknown'),
                 # dcc.Store(id='df_rwis_all'),
-                dcc.Store(id='rsc_colors'),
 
                 dcc.Store(id='picked_df_rwis'),
 

@@ -37,16 +37,6 @@ from dash_extensions.enrich import Input, Output, State, Serverside
 
 mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
 
-
-clientside_callback(
-    ClientsideFunction(
-        namespace='clientside',
-        function_name='test'
-    ),
-    Output('rand', 'value'),
-    Input('interval', 'n_intervals'),
-)
-
 @app.callback(
     [Output('semi-model', 'value'),
      Output('semi-nugget', 'value'),
@@ -59,6 +49,7 @@ clientside_callback(
     [Input('avl_points', 'data'),],)
 def initial_semi(avl_points): # NOTE: This reconstructs semi whenever new data is loaded
     avl_df = pd.DataFrame.from_dict(avl_points)
+    print("AVL_DF",avl_df)
     # updated_df = crop_cal_perc_white_black.ObtainAdjustedRSI(df=df)
     nugget, rnge, sill, maxlag, n_lags, dists, experiments = utils.ConstructSemi(df=avl_df)
     return ('Spherical',nugget,rnge,sill,maxlag,n_lags,dists,experiments)
@@ -135,6 +126,7 @@ def update_rsi_map(n_clicks, avl_points, semi_model, semi_nugget, semi_range, se
     avl_points = pd.DataFrame.from_dict(avl_points)
     print(avl_points)
     df_rwis = pd.DataFrame.from_dict(df_rwis) # 
+    print(df_rwis)
     rsi_locations = [go.Scattermapbox(
         lon=avl_points['lon'],
         lat=avl_points['lat'],
@@ -159,11 +151,14 @@ def update_rsi_map(n_clicks, avl_points, semi_model, semi_nugget, semi_range, se
         showlegend=True,
         name='RWIS',
     )]
-
+    if avl_points.empty:
+        mean_lon, mean_lat = 41.0,-94.0
+    else:
+        mean_lon, mean_lat = mean(avl_points['lon']), mean(avl_points['lat'])
     rsi_map_layout = go.Layout(
         mapbox=go.layout.Mapbox(
             accesstoken=mapbox_access_token,
-            center=go.layout.mapbox.Center(lon=mean(avl_points['lon']),lat=mean(avl_points['lat'])), 
+            center=go.layout.mapbox.Center(lon=mean_lon,lat=mean_lat), 
             style="dark",
             zoom=8,
             pitch=0,
@@ -174,7 +169,7 @@ def update_rsi_map(n_clicks, avl_points, semi_model, semi_nugget, semi_range, se
         font_color="white",
     )
 
-    if n_clicks:
+    if n_clicks and not avl_points.empty:
         #time.sleep(2)
         knowns = [[avl_points['pro_X'][i], avl_points['pro_Y'][i], avl_points['RSI'][i]] for i in range(len(avl_points))] # TODO: Update this command to use python's pandas dataframe
         unknowns = [[df_unknown['pro_X'][i], df_unknown['pro_Y'][i]] for i in range(len(df_unknown))]
