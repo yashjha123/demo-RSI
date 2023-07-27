@@ -24,6 +24,16 @@ from utils import load_data
 
 from AVL_Image_URL import get_cameras, grab_avl_data
 
+
+import datetime
+from datetime import date, timedelta, timezone
+from pytz import timezone
+central = timezone('US/Central')
+utc = timezone('UTC')
+dt = datetime.datetime.now(utc)
+time_in_cst = datetime.datetime.now(central)
+utc_time = dt.replace(tzinfo=utc).timestamp()
+
 # from dash import Dash.DiskcacheManager, CeleryManager, Input, Output, html
 
 
@@ -57,20 +67,21 @@ from AVL_Image_URL import get_cameras, grab_avl_data
 # ) for df_sub in df_subs]
 # print("LOGO")
 
-# mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
-# map_layout = go.Layout(
-#     mapbox=go.layout.Mapbox(
-#         accesstoken=mapbox_access_token,
-#         center=go.layout.mapbox.Center(lat=mean(df["y"]), lon=mean(df["x"])),
-#         style="dark",
-#         zoom=8,
-#         pitch=0,
-#     ),
-#     height=740,
-#     margin=dict(l=15, r=15, t=15, b=15),
-#     paper_bgcolor="#303030",
-#     font_color="white"
-# )
+mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
+# 40.813,-91.0992
+map_layout = go.Layout(
+    mapbox=go.layout.Mapbox(
+        accesstoken=mapbox_access_token,
+        center=go.layout.mapbox.Center(lat=40.813, lon=-91.0992),
+        style="dark",
+        zoom=8,
+        pitch=0,
+    ),
+    height=740,
+    margin=dict(l=15, r=15, t=15, b=15),
+    paper_bgcolor="#303030",
+    font_color="white"
+)
 
 
 banner = html.Div(
@@ -85,12 +96,33 @@ banner = html.Div(
                 html.A(
                     html.Img(id="logo_left", src=app.get_asset_url("Picture2.png"),
                              style={'width': '30%', 'height': '30%'}),
-                    href='/', )
+                    href='/', ),
+                dcc.Slider(0, 720,
+                        step=None,
+                        marks={
+                            30: '1h',
+                            90: '3h',
+                            180: '6h',
+                            360: '12h',
+                            720: '24h'
+                        },
+                        value=30,
+                        id="slider"
+                    ),
             ],
         ),
         html.Div(
             id="banner-logo",
             children=[
+                dcc.Input(
+                    id="pick_date_time",
+                    type="datetime-local",
+                    step="1",
+                    value=date.strftime(time_in_cst, "%Y-%m-%dT%H:%M"),
+                    style = {"flex":"3"},
+                ),
+                
+                dbc.Spinner(size="me-1", id="spinner_loader"),
                 dcc.Link("Home", href='/', className='button',
                          style={'text-decoration': 'None'}),
                 dcc.Link("Geostatistics Interpolation (RSI)", href='rsi', className='button',
@@ -111,10 +143,11 @@ banner = html.Div(
                 # dcc.Store(id='df_rwis_all'),
 
                 dcc.Store(id='picked_df_rwis'),
+                dcc.Store(id='experimental'),
 
                 dcc.Store(id='avl_points', storage_type="session"),
                 dcc.Store(id='rwis_points', storage_type="session"),
-
+                dcc.Store(id='cache',storage_type="session"),
             ],
         ),
     ],
@@ -142,14 +175,6 @@ def make_progress_graph(progress, total):
     )
     return progress_graph
 
-import datetime
-from datetime import date, timedelta, timezone
-from pytz import timezone
-central = timezone('US/Central')
-utc = timezone('UTC')
-dt = datetime.datetime.now(utc)
-time_in_cst = datetime.datetime.now(central)
-utc_time = dt.replace(tzinfo=utc).timestamp()
 
 mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
 
@@ -184,7 +209,6 @@ def HomePage():
         [
             dcc.Store(id='trigger_on_click'),
             dcc.Store(id='process_in_background'),
-            dcc.Store(id='cache'),
             dcc.Store(id='rand'),
 
             dcc.Interval(id="interval", interval=500),
@@ -205,13 +229,13 @@ def HomePage():
                                     #     date=date(2023, 5, 4),
                                     # ),
                                     
-                                    dcc.Input(
-                                        id="pick_date_time",
-                                        type="datetime-local",
-                                        step="1",
-                                        value=date.strftime(time_in_cst, "%Y-%m-%dT%H:%M"),
-                                        style = {"flex":"3"},
-                                    ),
+                                    # dcc.Input(
+                                    #     id="pick_date_time",
+                                    #     type="datetime-local",
+                                    #     step="1",
+                                    #     value=date.strftime(time_in_cst, "%Y-%m-%dT%H:%M"),
+                                    #     style = {"flex":"3"},
+                                    # ),
                                     daq.BooleanSwitch(
                                         on=True,
                                         id="live_button",
@@ -227,18 +251,7 @@ def HomePage():
                                        'padding-top': '1vh',
                                        'margin-bottom': '1vh'},
                                 children=[
-                                    dcc.Slider(0, 720,
-                                        step=None,
-                                        marks={
-                                            30: '1h',
-                                            90: '3h',
-                                            180: '6h',
-                                            360: '12h',
-                                            720: '24h'
-                                        },
-                                        value=30,
-                                        id="slider"
-                                    ),
+                                    
                                     html.Div(id='dd-output-container'), # TODO: determine if continuous or discrete slider is better
                                 ]
                             ),
@@ -283,15 +296,15 @@ def HomePage():
                                     ),
                                     
                                     dbc.CardBody(
-                                        [html.Div(id="result"),
-                                         html.Div([
-                                            dbc.Spinner(size="me-1", id="spinner_loader"),
-                                            dbc.Progress(id="progress_bar", animated=True, striped=True,value=100,color="success"),
-                                            html.Button(id="cancel_button_id", disabled=True, children="Cancel Running Job!"),
-                                        ], id='while_loading'),
+                                        [
+                                        # html.Div(id="result"),
+                                        #  html.Div([
+                                        #     dbc.Progress(id="progress_bar", animated=True, striped=True,value=100,color="success"),
+                                        #     html.Button(id="cancel_button_id", disabled=True, children="Cancel Running Job!"),
+                                        # ], id='while_loading'),
                                         dcc.Loading(dcc.Graph(
                                             id="AVL_map",
-                                            # figure=go.Figure(data=locations, layout=map_layout),
+                                            figure=go.Figure(data=[], layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
                                             # animate=True
                                         )),]

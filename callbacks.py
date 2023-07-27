@@ -51,7 +51,10 @@ rsc_colors = {'Full Snow Coverage': 'white',
               'Not labeled yet':'green',
               'Waiting...':'green',
               'Failed':'red'}
-
+defined_labels = ['Full Snow Coverage',
+                  'Partly Snow Coverage',
+                  'Bare',
+                  'Undefined']
 rsc_labels = ['Full Snow Coverage',
               'Partly Snow Coverage',
               'Bare',
@@ -128,33 +131,17 @@ def tuple_append(tup,elem):
 
 
 @app.callback(
-    output=Output("result", "children"),
+    output=Output("experimental", "data"),
     inputs=[Input("process_in_background", "data"),],
     running=[
-        (
-            Output("result", "style"),
-            {"display": "none"},
-            {"display": "block"},
-        ),
-        (
-            Output("progress_bar", "style"),
-            {"display": "block"},
-            {"display": "none"},
-        ),
         (
             Output("spinner_loader", "style"),
             {"display": "block"},
             {"display": "none"},
-        ),    
-        (
-            Output("cancel_button_id", "style"),
-            {"display": "block"},
-            {"display": "none"},
         ),
-        (Output("cancel_button_id", "disabled"), False, True),
     ],
     background=True,
-    cancel=[Input("cancel_button_id", "n_clicks"), Input("process_in_background", "data")],
+    cancel=[Input("process_in_background", "data")],
     prevent_initial_call=True,
     progress=[Output("cache","data")],
 )
@@ -181,12 +168,15 @@ def run_calculation(set_progress,todo):
         progress+=len(more)
         new_plots = grab_RWIS_data(more)
         set_progress((new_plots,))
-        print(new_plots)
+        # print(new_plots)
+        time.sleep(3)
     for i in range(0,len(avl_todo),BATCH_SIZE):
         progress += len(avl_todo[i:i+BATCH_SIZE])
         new_plots = grab_avl_data_v2(avl_todo[i:i+BATCH_SIZE])
         
         set_progress((new_plots,))
+        time.sleep(3)
+        
     
     return "Done"
 
@@ -238,7 +228,10 @@ def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
     
     # For RSI prediction
     if not df.empty:
-        avl_points = df[["RSI","lon",'lat','customdata']]
+        # https://stackoverflow.com/questions/19960077/how-to-filter-pandas-dataframe-using-in-and-not-in-like-in-sql
+        criterion = lambda row: row['hovertext'] in defined_labels
+        # not_in = df[df.apply(criterion, axis=1)]
+        avl_points = df[df.apply(criterion, axis=1)][["RSI","lon",'lat','customdata']]
         pro_X, pro_Y = utils.ConvertDegreetoProj(longs=np.array(avl_points["lon"]),
                              lats=np.array(avl_points["lat"]))
         avl_points["pro_X"] = pro_X
@@ -353,11 +346,14 @@ clientside_callback(
                 /* Updating the AVL
                 console.log(avl_points['customdata'])
                 console.log(Object.keys(avl_points['customdata']).filter((key)=>avl_points['customdata'][key].url==img_url))
-                 */
+                
                 const index_inside_avlp = Object.keys(avl_points['customdata']).filter((key)=>avl_points['customdata'][key].url==img_url)[0]
-                avl_points['RSI'][index_inside_avlp] = new_point['RSI']
-
-
+                */
+                const new_index = Object.keys(avl_points["RSI"]).length;
+                avl_points['RSI'][new_index] = new_point['RSI'];
+                avl_points['lon'][new_index] = new_point['lon'];
+                avl_points['lat'][new_index] = new_point['lat'];
+                avl_points['customdata'][new_index] = new_point['customdata'];
 
             } else {
                 console.log(new_point["label"])
@@ -365,9 +361,8 @@ clientside_callback(
 
                 const identifier = new_point['old_label'];
                 ind = prev_fig['data'][index_of_blank_data]['hovertext'].indexOf(identifier)
-                console.log(ind)
-                console.log(index_of_blank_data)
-
+                /*console.log(ind)
+                console.log(index_of_blank_data)*/
             }
             
             prev_fig['data'][index_of_blank_data]['hovertext'].splice(ind, 1)
@@ -384,9 +379,8 @@ clientside_callback(
                 console.log(new_point)
             }
         })
-        console.log(prev_fig)
-        console.log(avl_points)
-        
+        console.log("changed prev_fig",prev_fig)
+        console.log("avl_points",avl_points)
         return (Object.assign({}, prev_fig),avl_points);
     }
     """,

@@ -233,6 +233,7 @@ def OK(samples=[], unsampled=[], model='Sph', n=0, r=10, s=1):
         verbose=True,
         variogram_parameters={'sill': s, 'range': r, 'nugget': n},
         enable_plotting=False,
+        pseudo_inv=True
     )
     estimates, ss  = myKriging.execute(style="points",xpoints=unsampled[:,0],ypoints=unsampled[:,1])
     # W, errors = CalWeights_norm(samples=samples, unsampled=unsampled, model=model, n=n, r=r, s=s)

@@ -125,8 +125,11 @@ def update_rsi_map(n_clicks, avl_points, semi_model, semi_nugget, semi_range, se
     df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv') # unknown RWIS data (location, time, for interpolation)
     avl_points = pd.DataFrame.from_dict(avl_points)
     print(avl_points)
-    df_rwis = pd.DataFrame.from_dict(df_rwis) # 
-    print(df_rwis)
+    if df_rwis is not None:
+        df_rwis = pd.DataFrame.from_dict(df_rwis) # 
+        print("WOAH",df_rwis)
+    else:
+        df_rwis = pd.DataFrame(columns=['lon','lat'])
     rsi_locations = [go.Scattermapbox(
         lon=avl_points['lon'],
         lat=avl_points['lat'],
