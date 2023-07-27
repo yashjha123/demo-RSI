@@ -125,6 +125,8 @@ def toggle_live_mode(value):
 
 def tuple_append(tup,elem):
     return tuple(list(tup)+[(elem)])
+
+
 @app.callback(
     output=Output("result", "children"),
     inputs=[Input("process_in_background", "data"),],
