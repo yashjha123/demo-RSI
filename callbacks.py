@@ -42,7 +42,7 @@ mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaW
 # Menu callback, set and return
 # Declare function that connects other pages with content to container
 
-df, df_rwis, df_unknown, df_rwis_all = utils.load_data(date.today(),placeholder=False)
+# df, df_rwis, df_unknown, df_rwis_all = utils.load_data(date.today(),placeholder=False)
 
 rsc_colors = {'Full Snow Coverage': 'white',
               'Partly Snow Coverage': 'grey',
@@ -231,13 +231,13 @@ def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
         # https://stackoverflow.com/questions/19960077/how-to-filter-pandas-dataframe-using-in-and-not-in-like-in-sql
         criterion = lambda row: row['hovertext'] in defined_labels
         # not_in = df[df.apply(criterion, axis=1)]
-        avl_points = df[df.apply(criterion, axis=1)][["RSI","lon",'lat','customdata']]
+        avl_points = df[["RSI","lon",'lat','customdata','label']]
         pro_X, pro_Y = utils.ConvertDegreetoProj(longs=np.array(avl_points["lon"]),
                              lats=np.array(avl_points["lat"]))
         avl_points["pro_X"] = pro_X
         avl_points["pro_Y"] = pro_Y
     else:
-        avl_points = pd.DataFrame(columns=['RSI','lon','lat','pro_X','pro_Y','customdata'])
+        avl_points = pd.DataFrame(columns=['RSI','lon','lat','pro_X','pro_Y','customdata','label'])
 
     return avl_points, locations
 
@@ -246,9 +246,10 @@ def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
 # TODO: update for toggleable filter button
 @app.callback(
     #Output('dd-output-container', 'children'),
-    [Output('picked_df_rwis', 'data'),Output('avl_points','data'),
-     Output('AVL_map', 'figure'),Output('process_in_background','data')],
+    [Output('cache', 'data'),
+     Output('process_in_background','data')],
     [Input('slider', 'value'),Input('pick_date_time', 'value')],
+    prevent_initial_call=True
 )
 def load_map(window, pick_date_time):
     global rsc_colors
@@ -269,32 +270,32 @@ def load_map(window, pick_date_time):
     # print(triggered)
     rsc_colors = rsc_colors
 
-    df, df_rwis, df_unknown, df_rwis_all = utils.load_data(CENTRAL.localize(parse(pick_date_time)).astimezone(UTC),window=window) # TODO:
+    avl_plots, df_rwis, df_unknown, rwis_plots = utils.load_data(CENTRAL.localize(parse(pick_date_time)).astimezone(UTC),window=window) # TODO:
     # print(df)
     # df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
 
     
     # print(mean(df_rwis_all['lat'])) # 41.841316666666664
     # print(mean(df_rwis_all['lon'])) # -93.10251666666667
-    map_layout = go.Layout(
-        mapbox=go.layout.Mapbox(
-            accesstoken=mapbox_access_token,
-            center=go.layout.mapbox.Center(lat=41.841, lon=-93.102),
-            style="dark",
-            zoom=7,
-            pitch=0,
-        ),
-        height=740,
-        margin=dict(l=15, r=15, t=15, b=15),
-        paper_bgcolor="#303030",
-        font_color="white",
-        # uirevision=True
-    )
-    avl_points, locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
+    # map_layout = go.Layout(
+    #     mapbox=go.layout.Mapbox(
+    #         accesstoken=mapbox_access_token,
+    #         center=go.layout.mapbox.Center(lat=41.841, lon=-93.102),
+    #         style="dark",
+    #         zoom=7,
+    #         pitch=0,
+    #     ),
+    #     height=740,
+    #     margin=dict(l=15, r=15, t=15, b=15),
+    #     paper_bgcolor="#303030",
+    #     font_color="white",
+    #     # uirevision=True
+    # )
+    # avl_points, locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
     # todo: implement a template_locations variables to remove redundance data packets
     # print(locations)
     # if len(locations):
-    figure = go.Figure(data=locations, layout=map_layout)
+    # figure = go.Figure(data=locations, layout=map_layout)
     # else:
     #     df, df_rwis, df_unknown, df_rwis_all = utils.load_data(parse(pick_date_time), placeholder=False) # TODO:
     #     locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
@@ -310,15 +311,15 @@ def load_map(window, pick_date_time):
     #     figure = ret
     # for plt in df:
     #     avl_points.append({'type':'avl','lon':plt['lon'],'lat':plt['lat'],'imgurl':plt})
-    if len(df) > 0:
-        for plt in (df[df['hovertext'] == "Not labeled yet"]).to_dict('records'):
+    for plt in avl_plots:
+        if plt["hovertext"] == "Not labeled yet":
             todo.append({'type':"avl",'lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['PHOTO_URL']})
-            
-    if len(df_rwis_all) >0:
-        for plt in (df_rwis_all[df_rwis_all['RSC'] == "Waiting..."]).to_dict('records'):
+        
+    for plt in rwis_plots:
+        if plt["RSC"] == "Waiting...":
             todo.append({'type':'rwis','cid':plt['stid'],'lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['customdata']['url']})
     # print("Figure looks like",figure)
-    return [df_rwis.to_dict(),avl_points.to_dict(),figure,Serverside(todo)]
+    return [rwis_plots+avl_plots,Serverside(todo)]
 
 
 clientside_callback(
@@ -343,17 +344,22 @@ clientside_callback(
                 ind = prev_fig['data'][index_of_blank_data]['customdata'].map((e)=>e.url).indexOf(img_url)
 
 
-                /* Updating the AVL
+                
                 console.log(avl_points['customdata'])
                 console.log(Object.keys(avl_points['customdata']).filter((key)=>avl_points['customdata'][key].url==img_url))
                 
                 const index_inside_avlp = Object.keys(avl_points['customdata']).filter((key)=>avl_points['customdata'][key].url==img_url)[0]
-                */
-                const new_index = Object.keys(avl_points["RSI"]).length;
-                avl_points['RSI'][new_index] = new_point['RSI'];
-                avl_points['lon'][new_index] = new_point['lon'];
-                avl_points['lat'][new_index] = new_point['lat'];
-                avl_points['customdata'][new_index] = new_point['customdata'];
+                if(index_inside_avlp === undefined){         
+                    const new_index = Object.keys(avl_points["RSI"]).length;
+                    avl_points['RSI'][new_index] = new_point['RSI'];
+                    avl_points['lon'][new_index] = new_point['lon'];
+                    avl_points['lat'][new_index] = new_point['lat'];
+                    avl_points['customdata'][new_index] = new_point['customdata'];
+                    avl_points['label'][new_index] = new_point['hovertext'];
+                } else {
+                    avl_points['RSI'][index_inside_avlp] = new_point['RSI'];
+                    avl_points['label'][index_inside_avlp] = new_point['hovertext'];
+                }
 
             } else {
                 console.log(new_point["label"])
@@ -364,11 +370,12 @@ clientside_callback(
                 /*console.log(ind)
                 console.log(index_of_blank_data)*/
             }
-            
-            prev_fig['data'][index_of_blank_data]['hovertext'].splice(ind, 1)
-            prev_fig['data'][index_of_blank_data]['customdata'].splice(ind, 1)
-            prev_fig['data'][index_of_blank_data]['lat'].splice(ind, 1)
-            prev_fig['data'][index_of_blank_data]['lon'].splice(ind, 1)
+            if (ind!==-1){
+                prev_fig['data'][index_of_blank_data]['hovertext'].splice(ind, 1)
+                prev_fig['data'][index_of_blank_data]['customdata'].splice(ind, 1)
+                prev_fig['data'][index_of_blank_data]['lat'].splice(ind, 1)
+                prev_fig['data'][index_of_blank_data]['lon'].splice(ind, 1)
+            }
 
             if(new_point["label"] in indices){
                 const cri = indices[new_point['label']];
@@ -376,7 +383,7 @@ clientside_callback(
                 prev_fig["data"][cri]['hovertext'].push(new_point['hovertext'])
                 prev_fig["data"][cri]['lon'].push(new_point['lon'])
                 prev_fig["data"][cri]['lat'].push(new_point['lat'])
-                console.log(new_point)
+                console.log("Newly added point",new_point)
             }
         })
         console.log("changed prev_fig",prev_fig)
@@ -384,7 +391,7 @@ clientside_callback(
         return (Object.assign({}, prev_fig),avl_points);
     }
     """,
-    [Output("AVL_map","figure",allow_duplicate=True),Output('avl_points','data',allow_duplicate=True)],
+    [Output("AVL_map","figure"),Output('avl_points','data',allow_duplicate=True)],
     Input('cache', 'data'),
     [State("AVL_map","figure"),State('avl_points','data')],
     prevent_initial_call=True

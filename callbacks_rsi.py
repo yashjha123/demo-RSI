@@ -37,6 +37,11 @@ from dash_extensions.enrich import Input, Output, State, Serverside
 
 mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
 
+defined_labels = ['Full Snow Coverage',
+                  'Partly Snow Coverage',
+                  'Bare',
+                  'Undefined']
+
 @app.callback(
     [Output('semi-model', 'value'),
      Output('semi-nugget', 'value'),
@@ -49,6 +54,13 @@ mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaW
     [Input('avl_points', 'data'),],)
 def initial_semi(avl_points): # NOTE: This reconstructs semi whenever new data is loaded
     avl_df = pd.DataFrame.from_dict(avl_points)
+    print(avl_points)
+    print(avl_df)
+    criterion = lambda row: row['label'] in defined_labels
+    mask = avl_df.apply(criterion, axis=1)
+    print(mask)
+    avl_df = avl_df[mask]
+
     print("AVL_DF",avl_df)
     # updated_df = crop_cal_perc_white_black.ObtainAdjustedRSI(df=df)
     nugget, rnge, sill, maxlag, n_lags, dists, experiments = utils.ConstructSemi(df=avl_df)
@@ -122,28 +134,43 @@ def plot_semi_fig(semi_model, semi_nugget, semi_range, semi_sill,maxlag,n_lags,d
      State('semi-sill', 'value'),
      State('picked_df_rwis', 'data')],)
 def update_rsi_map(n_clicks, avl_points, semi_model, semi_nugget, semi_range, semi_sill, df_rwis):
+    # TODO: PLACEHOLDER VALUES FOR NOW
+    df_rwis = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/RWIS_locs.csv") # ask whats going on here...
+    
     df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv') # unknown RWIS data (location, time, for interpolation)
     avl_points = pd.DataFrame.from_dict(avl_points)
-    print(avl_points)
+    avl_df = pd.DataFrame.from_dict(avl_points)
+
+    criterion = lambda row: row['label'] in defined_labels
+
+    avl_df = avl_df[avl_df.apply(criterion, axis=1)]
+    print(avl_df)
+    pro_X, pro_Y = utils.ConvertDegreetoProj(longs=np.array(avl_df["lon"]),
+                            lats=np.array(avl_df["lat"]))
+    avl_df["pro_X"] = pro_X
+    avl_df["pro_Y"] = pro_Y
+
+
+    print(avl_df)
     if df_rwis is not None:
         df_rwis = pd.DataFrame.from_dict(df_rwis) # 
         print("WOAH",df_rwis)
     else:
         df_rwis = pd.DataFrame(columns=['lon','lat'])
     rsi_locations = [go.Scattermapbox(
-        lon=avl_points['lon'],
-        lat=avl_points['lat'],
+        lon=avl_df['lon'],
+        lat=avl_df['lat'],
         mode='markers',
         marker={'size': 10, 'opacity': 1.0,
-                'color': avl_points['RSI'],
+                'color': avl_df['RSI'],
                 'colorscale': [[0, 'white'], [1, 'black']],
                 'cmin': 0,
                 'cmax': 1,
                 'showscale': True,
                 'colorbar': {'len': 0.8, 'title': '0 = icy/snowy; 1 = dry'}, },
         hoverinfo='text',
-        hovertext=avl_points['RSI'],
-        customdata=avl_points['RSI'],
+        hovertext=avl_df['RSI'],
+        customdata=avl_df['RSI'],
         showlegend=True,
         name="Observed RSI", # Mobile locations
     )] + [go.Scattermapbox(
@@ -154,10 +181,10 @@ def update_rsi_map(n_clicks, avl_points, semi_model, semi_nugget, semi_range, se
         showlegend=True,
         name='RWIS',
     )]
-    if avl_points.empty:
+    if avl_df.empty:
         mean_lon, mean_lat = 41.0,-94.0
     else:
-        mean_lon, mean_lat = mean(avl_points['lon']), mean(avl_points['lat'])
+        mean_lon, mean_lat = mean(avl_df['lon']), mean(avl_df['lat'])
     rsi_map_layout = go.Layout(
         mapbox=go.layout.Mapbox(
             accesstoken=mapbox_access_token,
@@ -172,9 +199,9 @@ def update_rsi_map(n_clicks, avl_points, semi_model, semi_nugget, semi_range, se
         font_color="white",
     )
 
-    if n_clicks and not avl_points.empty:
+    if n_clicks and not avl_df.empty:
         #time.sleep(2)
-        knowns = [[avl_points['pro_X'][i], avl_points['pro_Y'][i], avl_points['RSI'][i]] for i in range(len(avl_points))] # TODO: Update this command to use python's pandas dataframe
+        knowns = [[avl_df['pro_X'][i], avl_df['pro_Y'][i], avl_df['RSI'][i]] for i in range(len(avl_df))] # TODO: Update this command to use python's pandas dataframe
         unknowns = [[df_unknown['pro_X'][i], df_unknown['pro_Y'][i]] for i in range(len(df_unknown))]
         estimates, errors = utils.OK(samples=knowns,
                                      unsampled=unknowns,
@@ -184,18 +211,18 @@ def update_rsi_map(n_clicks, avl_points, semi_model, semi_nugget, semi_range, se
                                                                pro_ys=np.array(df_unknown['pro_Y']))
         rsi_locations[0].marker['showscale'] = False
         updated_locations = [go.Scattermapbox(
-            lon=np.concatenate([estimates_xs, np.array(avl_points['lon'])]),
-            lat=np.concatenate([estimates_ys, np.array(avl_points['lat'])]),
+            lon=np.concatenate([estimates_xs, np.array(avl_df['lon'])]),
+            lat=np.concatenate([estimates_ys, np.array(avl_df['lat'])]),
             mode='markers',
             marker={'size': 10, 'opacity': 0.9,
-                    'color': np.concatenate([estimates, np.array(avl_points['RSI'])]),
+                    'color': np.concatenate([estimates, np.array(avl_df['RSI'])]),
                     'colorscale': [[0, 'white'],[1, 'black']],
                     'cmin': 0,
                     'cmax': 1,
                     'showscale': True,
                     'colorbar': {'len': 0.8, 'title': '0 = icy/snowy; 1 = dry'},},
             hoverinfo='text',
-            hovertext=np.concatenate([estimates, np.array(avl_points['RSI'])]),
+            hovertext=np.concatenate([estimates, np.array(avl_df['RSI'])]),
             showlegend=True,
             name="Estimated RSI",
         )] + rsi_locations

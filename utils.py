@@ -20,18 +20,18 @@ def load_data(picked_date_time, window=360, placeholder = False):
     else:
         time = (picked_date_time).strftime("%Y-%m-%dT%H:%M")
         avl_data = checkcache(get_cameras(str(window),time))
-        all = checkrwiscache(get_rwis_cameras(str(window),time))
+        rwis_data = checkrwiscache(get_rwis_cameras(str(window),time))
         # print(d)
         # print(avl_data)
-        df = pd.DataFrame(avl_data)
-        df_rwis_all = pd.DataFrame(all)
+        # avl_df = pd.DataFrame(avl_data)
+        # rwis_df = pd.DataFrame(all)
         # df.to_csv("placeholder.csv")
         # df_rwis_all.to_csv("placeholder2.csv")
         # template/preset data for initial demorsi - remove/replace when RWIS is automated
     df_rwis = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/RWIS_locs.csv") # ask whats going on here...
     df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv') # unknown RWIS data (location, time, for interpolation)
     # df_rwis_all = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/2_obtain_rsi_for_imgs.csv") # prediction mask url + estimate ratio + classification
-    return df, df_rwis, df_unknown, df_rwis_all
+    return avl_data, df_rwis, df_unknown, rwis_data
 
 
 

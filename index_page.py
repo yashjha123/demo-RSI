@@ -54,17 +54,37 @@ utc_time = dt.replace(tzinfo=utc).timestamp()
 #     else:
 #         df_subs.append(to_append)
 # print("GOLO")
-# locations = [go.Scattermapbox(
-#     lon=df_sub['x'],
-#     lat=df_sub['y'],
-#     mode='markers',
-#     marker={'color': rsc_colors[df_sub['Predict'].iloc[0]], 'size': 10, 'opacity': 0.6},
-#     hoverinfo='text',
-#     hovertext=df_sub['Predict'],
-#     customdata=df_sub['PHOTO_URL'],
-#     showlegend=True,
-#     name=df_sub['Predict'].iloc[0],
-# ) for df_sub in df_subs]
+rsc_colors = {'Full Snow Coverage': 'white',
+              'Partly Snow Coverage': 'grey',
+              'Bare': 'black',
+              'Undefined': '#FDDD0D',
+              'Not labeled yet':'green',
+              'Waiting...':'green',
+              'Failed':'red'}
+
+rwis_locations = [go.Scattermapbox(
+        lon=[],
+        lat=[],
+        mode='markers',
+        marker={'color': rsc_colors[rsc_type], 'size': 20, 'opacity': 0.8,},
+        showlegend=True,
+        hoverinfo='text',
+        hovertext= [],
+        customdata=[],
+        name='RWIS-'+rsc_type, # iloc grabs element at first index 
+    ) for rsc_type in rsc_colors.keys()]
+avl_locations = [go.Scattermapbox(
+        lon=[-91.099],
+        lat=[40.813],
+        mode='markers',
+        marker={'color': rsc_colors[rsc_type], 'size': 10, 'opacity': 1.0,},
+        showlegend=True,
+        hoverinfo='text',
+        hovertext= ["WOAH"],
+        customdata=[{"url":"THERE IS SOMETHING","preds":[0,0,0,1]}],
+        name='AVL-'+rsc_type, # iloc grabs element at first index 
+    ) for rsc_type in rsc_colors.keys()]
+locations_placeholder = rwis_locations + avl_locations
 # print("LOGO")
 
 mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
@@ -83,6 +103,8 @@ map_layout = go.Layout(
     font_color="white"
 )
 
+
+avl_blank = pd.DataFrame(columns=['RSI','lon','lat','pro_X','pro_Y','customdata','label']).to_dict()
 
 banner = html.Div(
     id="banner",
@@ -145,9 +167,11 @@ banner = html.Div(
                 dcc.Store(id='picked_df_rwis'),
                 dcc.Store(id='experimental'),
 
-                dcc.Store(id='avl_points', storage_type="session"),
+                dcc.Store(id='avl_points', data=avl_blank),
                 dcc.Store(id='rwis_points', storage_type="session"),
                 dcc.Store(id='cache',storage_type="session"),
+                dcc.Store(id='process_in_background'),
+
             ],
         ),
     ],
@@ -204,11 +228,11 @@ map_layout = go.Layout(
     paper_bgcolor="#303030",
     font_color="white"
 )
+
 def HomePage():
     layout = html.Div(
         [
             dcc.Store(id='trigger_on_click'),
-            dcc.Store(id='process_in_background'),
             dcc.Store(id='rand'),
 
             dcc.Interval(id="interval", interval=500),
@@ -304,7 +328,7 @@ def HomePage():
                                         # ], id='while_loading'),
                                         dcc.Loading(dcc.Graph(
                                             id="AVL_map",
-                                            figure=go.Figure(data=[], layout=map_layout),
+                                            figure=go.Figure(data=locations_placeholder, layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
                                             # animate=True
                                         )),]
