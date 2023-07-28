@@ -1,5 +1,5 @@
 import pandas as pd
-from AVL_Image_URL import get_cameras, grab_avl_data
+from AVL_Image_URL import get_cameras
 from datetime import date
 from random import sample
 

@@ -30,7 +30,7 @@ import rsi_page
 from rsi_page import *
 import crop_cal_perc_white_black
 from crop_cal_perc_white_black import *
-from AVL_Image_URL import getPredictForOneImage, grab_avl_data_v2, grab_RWIS_data
+from AVL_Image_URL import getPredictForOneImage, grab_avl_data_v2
 from dash_extensions.enrich import Input, Output, State, Serverside
 
 
@@ -42,7 +42,7 @@ mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaW
 # Menu callback, set and return
 # Declair function  that connects other pages with content to container
 
-df, df_rwis, df_unknown, df_rwis_all = utils.load_data(date.today(),placeholder=False)
+df, df_rwis, df_unknown, df_rwis_all = utils.load_data(datetime.datetime.now(),placeholder=False)
 
 rsc_colors = {'Full Snow Coverage': 'white',
               'Partly Snow Coverage': 'grey',
@@ -126,68 +126,68 @@ def toggle_live_mode(value):
 
 def tuple_append(tup,elem):
     return tuple(list(tup)+[(elem)])
-@app.callback(
-    output=Output("result", "children"),
-    inputs=[Input("process_in_background", "data"),],
-    running=[
-        (
-            Output("result", "style"),
-            {"display": "none"},
-            {"display": "block"},
-        ),
-        (
-            Output("progress_bar", "style"),
-            {"display": "block"},
-            {"display": "none"},
-        ),
-        (
-            Output("spinner_loader", "style"),
-            {"display": "block"},
-            {"display": "none"},
-        ),    
-        (
-            Output("cancel_button_id", "style"),
-            {"display": "block"},
-            {"display": "none"},
-        ),
-        (Output("cancel_button_id", "disabled"), False, True),
-    ],
-    background=True,
-    cancel=[Input("cancel_button_id", "n_clicks"), Input("process_in_background", "data")],
-    prevent_initial_call=True,
-    progress=[Output("cache","data")],
-)
-def run_calculation(set_progress,todo):
-    # print(set_progress)
-    # print("TADA5")
-    if type(todo) == str and todo == "UsePlaceholder":
-        return "We could not find any information for the specified date. Please ensure that you have chosen a date prior to the present. A sample dataset has been generated.."
-    if todo == None or len(todo)==0:
-        # set_progress(('1','1',prev_fig))
-        # raise PreventUpdate
-        return "Done"
-    avl_todo = []
-    rwis_todo = []
-    for elem in todo:
-        if elem['type'] == "avl":
-            avl_todo.append(elem)
-        elif elem['type'] ==  "rwis":
-            rwis_todo.append(elem)
-    BATCH_SIZE = 12
-    progress = 0
-    for i in range(0,len(rwis_todo),BATCH_SIZE):
-        more = rwis_todo[i:i+BATCH_SIZE]
-        progress+=len(more)
-        new_plots = grab_RWIS_data(more)
-        set_progress((new_plots,))
-        print(new_plots)
-    for i in range(0,len(avl_todo),BATCH_SIZE):
-        progress += len(avl_todo[i:i+BATCH_SIZE])
-        new_plots = grab_avl_data_v2(avl_todo[i:i+BATCH_SIZE])
+# @app.callback(
+#     output=Output("result", "children"),
+#     inputs=[Input("process_in_background", "data"),],
+#     running=[
+#         (
+#             Output("result", "style"),
+#             {"display": "none"},
+#             {"display": "block"},
+#         ),
+#         (
+#             Output("progress_bar", "style"),
+#             {"display": "block"},
+#             {"display": "none"},
+#         ),
+#         (
+#             Output("spinner_loader", "style"),
+#             {"display": "block"},
+#             {"display": "none"},
+#         ),    
+#         (
+#             Output("cancel_button_id", "style"),
+#             {"display": "block"},
+#             {"display": "none"},
+#         ),
+#         (Output("cancel_button_id", "disabled"), False, True),
+#     ],
+#     background=True,
+#     cancel=[Input("cancel_button_id", "n_clicks"), Input("process_in_background", "data")],
+#     prevent_initial_call=True,
+#     progress=[Output("cache","data")],
+# )
+# def run_calculation(set_progress,todo):
+#     # print(set_progress)
+#     # print("TADA5")
+#     if type(todo) == str and todo == "UsePlaceholder":
+#         return "We could not find any information for the specified date. Please ensure that you have chosen a date prior to the present. A sample dataset has been generated.."
+#     if todo == None or len(todo)==0:
+#         # set_progress(('1','1',prev_fig))
+#         # raise PreventUpdate
+#         return "Done"
+#     avl_todo = []
+#     rwis_todo = []
+#     for elem in todo:
+#         if elem['type'] == "avl":
+#             avl_todo.append(elem)
+#         elif elem['type'] ==  "rwis":
+#             rwis_todo.append(elem)
+#     BATCH_SIZE = 12
+#     progress = 0
+#     for i in range(0,len(rwis_todo),BATCH_SIZE):
+#         more = rwis_todo[i:i+BATCH_SIZE]
+#         progress+=len(more)
+#         new_plots = grab_RWIS_data(more)
+#         set_progress((new_plots,))
+#         print(new_plots)
+#     for i in range(0,len(avl_todo),BATCH_SIZE):
+#         progress += len(avl_todo[i:i+BATCH_SIZE])
+#         new_plots = grab_avl_data_v2(avl_todo[i:i+BATCH_SIZE])
         
-        set_progress((new_plots,))
+#         set_progress((new_plots,))
     
-    return "Done"
+#     return "Done"
 
 
 def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
@@ -214,6 +214,7 @@ def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
         showlegend=True,
         name='AVL-'+rsc_type,
     ) for rsc_type, df_sub in df_subs]
+    print(avl_locations)
 
     df_rwis_subs = []
     if(len(df_rwis_all)>0):
@@ -265,7 +266,7 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
     rsc_colors = rsc_colors
 
     df, df_rwis, df_unknown, df_rwis_all = utils.load_data(CENTRAL.localize(parse(pick_date_time)).astimezone(UTC),window=window) # TODO:
-    # print(df)
+    print(df)
     # df, df_rwis, df_unknown, df_rwis_all = utils.load_data(picked_date)
 
     
@@ -283,7 +284,7 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
         margin=dict(l=15, r=15, t=15, b=15),
         paper_bgcolor="#303030",
         font_color="white",
-        # uirevision=True
+        uirevision=True
     )
     locations = get_avl_and_rwis_locations(df, df_rwis, df_rwis_all)
     # print(locations)
@@ -313,59 +314,59 @@ def load_map(window, pick_date_time, rsc_colors, prev_fig):
     return [df.to_dict(), df_rwis.to_dict(), df_unknown.to_dict(), df_rwis_all.to_dict(),figure,Serverside(todo)]
 
 
-clientside_callback(
-    """
-    async function(new_points,prev_fig) {
-        console.log(prev_fig)
-        console.log(new_points)
-        var indices = new Object();
-        prev_fig['data'].forEach((element,i)=>{
-            indices[element["name"]] = i
-        })
-        console.log(indices)
-        const index_of_blank_RWIS = indices[ 'RWIS-Waiting...'];
-        const index_of_blank_AVL = indices[ 'AVL-Not labeled yet'];
-        new_points.forEach((new_point)=>{
-            let ind = 0;
-            let index_of_blank_data = 0;
-            if(new_point["label"].startsWith("AVL")){
-                index_of_blank_data = index_of_blank_AVL;
-                const img_url = new_point['PHOTO_URL']
-                ind = prev_fig['data'][index_of_blank_data]['customdata'].map((e)=>e.url).indexOf(img_url)                
-            } else {
-                console.log(new_point["label"])
-                index_of_blank_data = index_of_blank_RWIS;
+# clientside_callback(
+#     """
+#     async function(new_points,prev_fig) {
+#         console.log(prev_fig)
+#         console.log(new_points)
+#         var indices = new Object();
+#         prev_fig['data'].forEach((element,i)=>{
+#             indices[element["name"]] = i
+#         })
+#         console.log(indices)
+#         const index_of_blank_RWIS = indices[ 'RWIS-Waiting...'];
+#         const index_of_blank_AVL = indices[ 'AVL-Not labeled yet'];
+#         new_points.forEach((new_point)=>{
+#             let ind = 0;
+#             let index_of_blank_data = 0;
+#             if(new_point["label"].startsWith("AVL")){
+#                 index_of_blank_data = index_of_blank_AVL;
+#                 const img_url = new_point['PHOTO_URL']
+#                 ind = prev_fig['data'][index_of_blank_data]['customdata'].map((e)=>e.url).indexOf(img_url)                
+#             } else {
+#                 console.log(new_point["label"])
+#                 index_of_blank_data = index_of_blank_RWIS;
 
-                const identifier = new_point['old_label'];
-                ind = prev_fig['data'][index_of_blank_data]['hovertext'].indexOf(identifier)
-                console.log(ind)
-                console.log(index_of_blank_data)
+#                 const identifier = new_point['old_label'];
+#                 ind = prev_fig['data'][index_of_blank_data]['hovertext'].indexOf(identifier)
+#                 console.log(ind)
+#                 console.log(index_of_blank_data)
 
-            }
+#             }
             
-            prev_fig['data'][index_of_blank_data]['hovertext'].splice(ind, 1)
-            prev_fig['data'][index_of_blank_data]['customdata'].splice(ind, 1)
-            prev_fig['data'][index_of_blank_data]['lat'].splice(ind, 1)
-            prev_fig['data'][index_of_blank_data]['lon'].splice(ind, 1)
+#             prev_fig['data'][index_of_blank_data]['hovertext'].splice(ind, 1)
+#             prev_fig['data'][index_of_blank_data]['customdata'].splice(ind, 1)
+#             prev_fig['data'][index_of_blank_data]['lat'].splice(ind, 1)
+#             prev_fig['data'][index_of_blank_data]['lon'].splice(ind, 1)
 
-            if(new_point["label"] in indices){
-                const cri = indices[new_point['label']];
-                prev_fig["data"][cri]['customdata'].push(new_point['customdata'])
-                prev_fig["data"][cri]['hovertext'].push(new_point['hovertext'])
-                prev_fig["data"][cri]['lon'].push(new_point['lon'])
-                prev_fig["data"][cri]['lat'].push(new_point['lat'])
-                console.log(new_point)
-            }
-        })
-        console.log(prev_fig)
-        return Object.assign({}, prev_fig); 
-    }
-    """,
-    Output("AVL_map","figure",allow_duplicate=True),
-    Input('cache', 'data'),
-    State("AVL_map","figure"),
-    prevent_initial_call=True
-)
+#             if(new_point["label"] in indices){
+#                 const cri = indices[new_point['label']];
+#                 prev_fig["data"][cri]['customdata'].push(new_point['customdata'])
+#                 prev_fig["data"][cri]['hovertext'].push(new_point['hovertext'])
+#                 prev_fig["data"][cri]['lon'].push(new_point['lon'])
+#                 prev_fig["data"][cri]['lat'].push(new_point['lat'])
+#                 console.log(new_point)
+#             }
+#         })
+#         console.log(prev_fig)
+#         return Object.assign({}, prev_fig); 
+#     }
+#     """,
+#     Output("AVL_map","figure",allow_duplicate=True),
+#     Input('cache', 'data'),
+#     State("AVL_map","figure"),
+#     prevent_initial_call=True
+# )
 # @app.callback([Output("AVL_map","figure",allow_duplicate=True)],[Input("cache","data")],prevent_initial_call=True,)
 # def function2(data):
 #     print("Updating",data)

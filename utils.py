@@ -4,7 +4,7 @@ import copy
 import math
 
 import pandas as pd
-from AVL_Image_URL import get_cameras, grab_avl_data, checkcache, get_rwis_cameras, checkrwiscache
+from AVL_Image_URL import get_cameras, checkcache, get_rwis_cameras, checkrwiscache
 
 from datetime import date
 import datetime
@@ -34,8 +34,8 @@ def load_data(picked_date_time, window=360, placeholder = False):
         
     else:
         time = (picked_date_time).strftime("%Y-%m-%dT%H:%M")
-        avl_data = checkcache(get_cameras(str(window),time))
-        all = checkrwiscache(get_rwis_cameras(str(window),time))
+        avl_data = checkcache(get_cameras(window,picked_date_time))
+        all = checkrwiscache(get_rwis_cameras(str(window),picked_date_time))
         # print(d)
         # print(avl_data)
         df = pd.DataFrame(avl_data)

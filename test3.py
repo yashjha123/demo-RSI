@@ -1,10 +1,13 @@
 import pandas as pd
 
-df = pd.read_csv("2_obtain_rsi_for_imgs.csv")
-
+df = pd.read_csv('0_RWIS_GPS_data_mod.csv')
 d = df.to_dict('records')
-print(d)
-for x in d:
-    x['stid+RSI'] = x['img_path'][20:28]
+station_id = 'IDOT-000'
 
-1_rwis_imgs_masks\\IDOT-000
+stations = {}
+
+for x in d:
+    stations[x['cid']] = [x['Latitude'],x['Longitude (-W)']]
+
+print(stations[station_id])
+    # { 'cid': ['lat','lon']}
