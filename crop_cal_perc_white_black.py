@@ -15,6 +15,17 @@ import random
 
 # from tensorflow.keras.preprocessing.image import img_to_array, load_img
 
+def getRSI(lbl):
+    ret = 0.0
+    if lbl == 'Full Snow Coverage':
+        ret = 0.35
+    elif lbl == 'Partly Snow Coverage':
+        ret = 0.8 - (0.8 - 0.5) * 0.4
+        # updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * perc_white
+        #updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * random.random()
+    elif lbl == 'Bare':
+        ret = 0.9
+    return ret
 
 def ObtainAdjustedRSI(df={}):
     updated_df = df.drop(df[df.Predict == 'Undefined'].index)

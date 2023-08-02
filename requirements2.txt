@@ -7,3 +7,4 @@ pymysql
 sshtunnel
 Pillow
 tqdm
+scikit-gstat

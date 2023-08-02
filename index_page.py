@@ -19,9 +19,20 @@ from dash.dependencies import Input, Output
 from app import app
 import utils
 import callbacks
+import callbacks_rsi
 from utils import load_data
 
 from AVL_Image_URL import get_cameras
+
+
+import datetime
+from datetime import date, timedelta, timezone
+from pytz import timezone
+central = timezone('US/Central')
+utc = timezone('UTC')
+dt = datetime.datetime.now(utc)
+time_in_cst = datetime.datetime.now(central)
+utc_time = dt.replace(tzinfo=utc).timestamp()
 
 # from dash import Dash.DiskcacheManager, CeleryManager, Input, Output, html
 
@@ -43,34 +54,57 @@ from AVL_Image_URL import get_cameras
 #     else:
 #         df_subs.append(to_append)
 # print("GOLO")
-# locations = [go.Scattermapbox(
-#     lon=df_sub['x'],
-#     lat=df_sub['y'],
-#     mode='markers',
-#     marker={'color': rsc_colors[df_sub['Predict'].iloc[0]], 'size': 10, 'opacity': 0.6},
-#     hoverinfo='text',
-#     hovertext=df_sub['Predict'],
-#     customdata=df_sub['PHOTO_URL'],
-#     showlegend=True,
-#     name=df_sub['Predict'].iloc[0],
-# ) for df_sub in df_subs]
+rsc_colors = {'Full Snow Coverage': 'white',
+              'Partly Snow Coverage': 'grey',
+              'Bare': 'black',
+              'Undefined': '#FDDD0D',
+              'Not labeled yet':'green',
+              'Waiting...':'green',
+              'Failed':'red'}
+
+rwis_locations = [go.Scattermapbox(
+        lon=[],
+        lat=[],
+        mode='markers',
+        marker={'color': rsc_colors[rsc_type], 'size': 20, 'opacity': 0.8,},
+        showlegend=True,
+        hoverinfo='text',
+        hovertext= [],
+        customdata=[],
+        name='RWIS-'+rsc_type, # iloc grabs element at first index 
+    ) for rsc_type in rsc_colors.keys()]
+avl_locations = [go.Scattermapbox(
+        lon=[-91.099],
+        lat=[40.813],
+        mode='markers',
+        marker={'color': rsc_colors[rsc_type], 'size': 10, 'opacity': 1.0,},
+        showlegend=True,
+        hoverinfo='text',
+        hovertext= ["WOAH"],
+        customdata=[{"url":"THERE IS SOMETHING","preds":[0,0,0,1]}],
+        name='AVL-'+rsc_type, # iloc grabs element at first index 
+    ) for rsc_type in rsc_colors.keys()]
+locations_placeholder = rwis_locations + avl_locations
 # print("LOGO")
 
-# mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
-# map_layout = go.Layout(
-#     mapbox=go.layout.Mapbox(
-#         accesstoken=mapbox_access_token,
-#         center=go.layout.mapbox.Center(lat=mean(df["y"]), lon=mean(df["x"])),
-#         style="dark",
-#         zoom=8,
-#         pitch=0,
-#     ),
-#     height=740,
-#     margin=dict(l=15, r=15, t=15, b=15),
-#     paper_bgcolor="#303030",
-#     font_color="white"
-# )
+mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
+# 40.813,-91.0992
+map_layout = go.Layout(
+    mapbox=go.layout.Mapbox(
+        accesstoken=mapbox_access_token,
+        center=go.layout.mapbox.Center(lat=40.813, lon=-91.0992),
+        style="dark",
+        zoom=8,
+        pitch=0,
+    ),
+    height=740,
+    margin=dict(l=15, r=15, t=15, b=15),
+    paper_bgcolor="#303030",
+    font_color="white"
+)
 
+
+avl_blank = pd.DataFrame(columns=['RSI','lon','lat','pro_X','pro_Y','customdata','label']).to_dict()
 
 banner = html.Div(
     id="banner",
@@ -84,12 +118,33 @@ banner = html.Div(
                 html.A(
                     html.Img(id="logo_left", src=app.get_asset_url("Picture2.png"),
                              style={'width': '30%', 'height': '30%'}),
-                    href='/', )
+                    href='/', ),
+                dcc.Slider(0, 720,
+                        step=None,
+                        marks={
+                            30: '1h',
+                            90: '3h',
+                            180: '6h',
+                            360: '12h',
+                            720: '24h'
+                        },
+                        value=30,
+                        id="slider"
+                    ),
             ],
         ),
         html.Div(
             id="banner-logo",
             children=[
+                dcc.Input(
+                    id="pick_date_time",
+                    type="datetime-local",
+                    step="1",
+                    value=date.strftime(time_in_cst, "%Y-%m-%dT%H:%M"),
+                    style = {"flex":"3"},
+                ),
+                
+                dbc.Spinner(size="me-1", id="spinner_loader"),
                 dcc.Link("Home", href='/', className='button',
                          style={'text-decoration': 'None'}),
                 dcc.Link("Geostatistics Interpolation (RSI)", href='rsi', className='button',
@@ -105,15 +160,18 @@ banner = html.Div(
                 ),
                 # dcc.Store stores the intermediate value
                 dcc.Store(id='df'),
-                dcc.Store(id='df_rwis'),
+                # dcc.Store(id='df_rwis'),
                 dcc.Store(id='df_unknown'),
-                dcc.Store(id='df_rwis_all'),
-                dcc.Store(id='rsc_colors'),
+                # dcc.Store(id='df_rwis_all'),
 
-                dcc.Store(id='picked_df'),
                 dcc.Store(id='picked_df_rwis'),
-                dcc.Store(id='picked_df_unknown'),
-                dcc.Store(id='picked_df_rwis_all'),
+                dcc.Store(id='experimental'),
+
+                dcc.Store(id='avl_points', data=avl_blank),
+                dcc.Store(id='rwis_points', storage_type="session"),
+                dcc.Store(id='cache',storage_type="session"),
+                dcc.Store(id='process_in_background'),
+
             ],
         ),
     ],
@@ -141,14 +199,6 @@ def make_progress_graph(progress, total):
     )
     return progress_graph
 
-import datetime
-from datetime import date, timedelta, timezone
-from pytz import timezone
-central = timezone('US/Central')
-utc = timezone('UTC')
-dt = datetime.datetime.now(utc)
-time_in_cst = datetime.datetime.now(central)
-utc_time = dt.replace(tzinfo=utc).timestamp()
 
 mapbox_access_token = "pk.eyJ1IjoibWluZ2ppYW53dSIsImEiOiJja2V0Y2lneGQxbzM3MnBuaWltN3RrY2QyIn0.P9tqv8lRlKbVw0_Tz2rPPw"
 
@@ -178,12 +228,12 @@ map_layout = go.Layout(
     paper_bgcolor="#303030",
     font_color="white"
 )
+
 def HomePage():
     layout = html.Div(
         [
             dcc.Store(id='trigger_on_click'),
-            dcc.Store(id='process_in_background'),
-            dcc.Store(id='cache'),
+            dcc.Store(id='rand'),
 
             dcc.Interval(id="interval", interval=500),
             dcc.Interval(id="auto_trigger", interval=30000, n_intervals=0),
@@ -203,13 +253,13 @@ def HomePage():
                                     #     date=date(2023, 5, 4),
                                     # ),
                                     
-                                    dcc.Input(
-                                        id="pick_date_time",
-                                        type="datetime-local",
-                                        step="1",
-                                        value=date.strftime(time_in_cst, "%Y-%m-%dT%H:%M"),
-                                        style = {"flex":"3"},
-                                    ),
+                                    # dcc.Input(
+                                    #     id="pick_date_time",
+                                    #     type="datetime-local",
+                                    #     step="1",
+                                    #     value=date.strftime(time_in_cst, "%Y-%m-%dT%H:%M"),
+                                    #     style = {"flex":"3"},
+                                    # ),
                                     daq.BooleanSwitch(
                                         on=True,
                                         id="live_button",
@@ -225,18 +275,7 @@ def HomePage():
                                        'padding-top': '1vh',
                                        'margin-bottom': '1vh'},
                                 children=[
-                                    dcc.Slider(0, 720,
-                                        step=None,
-                                        marks={
-                                            30: '1h',
-                                            90: '3h',
-                                            180: '6h',
-                                            360: '12h',
-                                            720: '24h'
-                                        },
-                                        value=30,
-                                        id="slider"
-                                    ),
+                                    
                                     html.Div(id='dd-output-container'), # TODO: determine if continuous or discrete slider is better
                                 ]
                             ),
@@ -281,15 +320,15 @@ def HomePage():
                                     ),
                                     
                                     dbc.CardBody(
-                                        [html.Div(id="result"),
-                                         html.Div([
-                                            dbc.Spinner(size="me-1", id="spinner_loader"),
-                                            dbc.Progress(id="progress_bar", animated=True, striped=True,value=100,color="success"),
-                                            html.Button(id="cancel_button_id", disabled=True, children="Cancel Running Job!"),
-                                        ], id='while_loading'),
+                                        [
+                                        # html.Div(id="result"),
+                                        #  html.Div([
+                                        #     dbc.Progress(id="progress_bar", animated=True, striped=True,value=100,color="success"),
+                                        #     html.Button(id="cancel_button_id", disabled=True, children="Cancel Running Job!"),
+                                        # ], id='while_loading'),
                                         dcc.Loading(dcc.Graph(
                                             id="AVL_map",
-                                            # figure=go.Figure(data=locations, layout=map_layout),
+                                            figure=go.Figure(data=locations_placeholder, layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
                                             animate=True
                                         )),]

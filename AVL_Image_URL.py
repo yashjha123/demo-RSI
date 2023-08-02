@@ -24,22 +24,32 @@ both_highways = (both_highways.to_crs('EPSG:4326'))
 
 import requests
 from datetime import date
-from db_handler.nicedb import NiceDB, NiceTable, BulkTable
-
-db = NiceDB()
-db.start()
-db.test()
 
 import requests
 import random
 
 SERVER_IP = "http://162.246.157.104:8080"
+
 BASE_URL = f'https://mesonet.agron.iastate.edu/'
 AVL_RULE = f"{SERVER_IP}/predict?img_url="
+
 
 avl_ref = firebase_db.collection_group("Images")
 # TODO: Adjust items to only hold the stid's (should automatically obtain all camera angles)
 rwis_items = [(49,0),(30,0),(47,0),(53,0),(72,0),(48,2),(44,0),(14,0),(35,0),(26,0),(0,0)]
+
+
+def getRSI(lbl):
+    ret = 0.0
+    if lbl == 'Full Snow Coverage':
+        ret = 0.35
+    elif lbl == 'Partly Snow Coverage':
+        ret = 0.8 - (0.8 - 0.5) * 0.4
+        # updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * perc_white
+        #updated_df.at[i, 'RSI'] = 0.8 - (0.8 - 0.5) * random.random()
+    elif lbl == 'Bare':
+        ret = 0.9
+    return ret
 
 def get_rwis_cameras(windowsize, date):
     """
@@ -71,8 +81,6 @@ def getLabel(result):
     labels =['Bare','Partly Snow Coverage','Undefined','Full Snow Coverage']
     return labels[result.index(max(result))]
 
-
-disksave_bulk = BulkTable(db,"AVL_PRED",key="IMAGE_URL",value=["Bare","PartlySnowCoverage","Undefined","FullSnowCoverage"],high_load=True)
 def checkcache(results, filter = True):
     global both_highways
     dashcams = []
@@ -112,14 +120,13 @@ def checkcache(results, filter = True):
             'prob_Full Snow Coverage': res[3],
             'customdata': {'url':data['imgurl'],'preds':pred},
             'label':"AVL-"+inp,
-            "RSI": 0.4 #BUG
+            "RSI": getRSI(inp)
         }
         dashcams.append(dashcam)
     return dashcams
 
 
 import pandas as pd
-rwis_disksave_bulk = BulkTable(db,"RWIS_PRED",key="IMAGE_URL",value=["Snow_Estimate_Ratio","SRC_MASK"],high_load=True)
 
 rwis_stations = pd.read_csv('0_RWIS_GPS_data_mod.csv')
 d = rwis_stations.to_dict('records')
@@ -219,7 +226,7 @@ def grab_avl_data_v2(todo):
             'prob_Full Snow Coverage': res[3],
             'customdata': {'url':img_url,'preds':pred,"type":"AVL"},
             'label':"AVL-"+inp,
-            "RSI": 0.4 #BUG
+            "RSI": getRSI(inp) #BUG
         }
         dashcams.append(dashcam)
         i+=1

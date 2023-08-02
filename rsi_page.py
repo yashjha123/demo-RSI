@@ -34,8 +34,6 @@ def NamedGroup(children, label, **kwargs):
         **kwargs
     )
 
-
-
 def HomePage():
     layout = html.Div(
         [
