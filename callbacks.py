@@ -325,6 +325,7 @@ def load_map(window, pick_date_time):
 clientside_callback(
     """
     async function(new_points,prev_fig,avl_points) {
+        
         console.log("AVL",avl_points)
         console.log(prev_fig)
         console.log(new_points)
@@ -388,7 +389,7 @@ clientside_callback(
         })
         console.log("changed prev_fig",prev_fig)
         console.log("avl_points",avl_points)
-        return (Object.assign({}, prev_fig),avl_points);
+        return ({...prev_fig},avl_points);
     }
     """,
     [Output("AVL_map","figure"),Output('avl_points','data',allow_duplicate=True)],
