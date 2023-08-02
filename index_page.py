@@ -21,7 +21,7 @@ import utils
 import callbacks
 from utils import load_data
 
-from AVL_Image_URL import get_cameras, grab_avl_data
+from AVL_Image_URL import get_cameras
 
 # from dash import Dash.DiskcacheManager, CeleryManager, Input, Output, html
 
@@ -291,7 +291,7 @@ def HomePage():
                                             id="AVL_map",
                                             # figure=go.Figure(data=locations, layout=map_layout),
                                             config={'displayModeBar': False, 'scrollZoom': True},
-                                            # animate=True
+                                            animate=True
                                         )),]
                                     )
                                 ]

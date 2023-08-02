@@ -1,12 +1,23 @@
 """
 An algorithm to automatically obtain AVL image urls to be used in a html-based webpage.
-Code: Michael Urbiztondo
 """
 
-from shapely.geometry import Polygon, LineString, Point
 
+from shapely.geometry import Polygon, LineString, Point
+from google.cloud import firestore 
+import datetime
+from google.cloud.firestore_v1.base_query import FieldFilter, Or
+from google.cloud.firestore_v1.field_path import FieldPath
 import geopandas as gpd
 import shapely
+import time
+from multiprocessing import Pool, freeze_support
+from tqdm import tqdm
+
+
+
+firebase_db = firestore.Client(project="demorsi-a1501")
+
 
 both_highways = gpd.read_file("maps/0_merged_I35_I80_pro_buffer20.shp") # in-built CRS 'epsg:26915'
 both_highways = (both_highways.to_crs('EPSG:4326'))
@@ -23,338 +34,77 @@ import requests
 import random
 
 SERVER_IP = "http://162.246.157.104:8080"
-
 BASE_URL = f'https://mesonet.agron.iastate.edu/'
-
 AVL_RULE = f"{SERVER_IP}/predict?img_url="
 
-def get_cameras(window_size, time):
-    """
-    Grabs latest AVL images based on window size
-    """
-    # https://mesonet.agron.iastate.edu/api/1/idot_dashcam.json?window=15
-    # 2023-02-07T14:31Z",
-    URL = BASE_URL + 'api/1/idot_dashcam.json?window=' + window_size + '&valid=' + time
-    print(URL)
-    response = requests.get(URL)
-    data = response.json()
-    status = response.status_code
-    if status != 200:
-        data = None
+avl_ref = firebase_db.collection_group("Images")
+# TODO: Adjust items to only hold the stid's (should automatically obtain all camera angles)
+rwis_items = [(49,0),(30,0),(47,0),(53,0),(72,0),(48,2),(44,0),(14,0),(35,0),(26,0),(0,0)]
 
-    return data
-
-def get_rwis_cameras(window_size, time):
+def get_rwis_cameras(windowsize, date):
     """
-    Grabs latest RWIS images based on window size
+    Grabs nearest image to date
     """
-    # https://mesonet.agron.iastate.edu/api/1/idot_rwiscam.json?window=15
-    # 2023-02-07T14:31Z",
-    URL = BASE_URL + 'api/1/idot_rwiscam.json?window=' + window_size + '&valid=' + time
-    print(URL)
-    response = requests.get(URL)
-    data = response.json()
-    status = response.status_code
-    if status != 200:
-        data = None
+    print(date)
+    def query_me(tup): # TODO: Check all angles and select non-empty
+        stid, angle = tup
+        query = firebase_db.collection_group(f"IDOT-{stid:03d}-{angle:d}").where(filter=FieldFilter("Date", "<=", date)).order_by("Date",  direction=firestore.Query.DESCENDING).limit(1)
+        results = query.get()
+        for doc in results:
+            return doc
+    return list(filter(lambda a:a!=None, list(map(query_me, rwis_items))))
 
-    return data
+# datee = datetime.datetime(year=2022, month=12, day=29, hour=12, minute=30)
+# print(get_rwis_cameras(1,datee))
 
-from tqdm import tqdm
+def get_cameras(windowsize, date):
+    """
+    Grabs AVL data within windowsize
+    """
+    startdate = date - datetime.timedelta(minutes=windowsize)
+    enddate = date + datetime.timedelta(minutes=windowsize)
+    query = firebase_db.collection_group("Images").where(filter=FieldFilter("Date", ">=", startdate)).where(filter=FieldFilter("Date", "<=", enddate)).stream()
+    return query
+
+
 def getLabel(result):
     labels =['Bare','Partly Snow Coverage','Undefined','Full Snow Coverage']
     return labels[result.index(max(result))]
 
+
 disksave_bulk = BulkTable(db,"AVL_PRED",key="IMAGE_URL",value=["Bare","PartlySnowCoverage","Undefined","FullSnowCoverage"],high_load=True)
 def checkcache(results, filter = True):
     global both_highways
-    img_urls = []
-    for d in results['data']:
-        img_urls.append(d['imgurl'])
     dashcams = []
-    # db_vals = disksave_bulk[img_urls]
-    # data = {"img_urls": img_urls}
-    # r = requests.post(url, json=data)
-    result_dict = {}
-    for url in img_urls: result_dict[url] = "None"
-    for data in results['data']:
 
+    for doc in results:
+        print((f"{doc.id} => {doc.to_dict()}"))
+        data = doc.to_dict()
+        data["imgurl"] = data["IMAGE_URL"]
+        long, lat = data["Position"].longitude, data["Position"].latitude
         if filter:
-            point = Point(data['lon'],data['lat'])
+            point = Point(long,lat)
             distances = (shapely.distance(point,both_highways.geometry) < 0.002)
             if (distances[0] or distances[1]) == False:
                 continue
 
-        if result_dict[data['imgurl']] == "None":
-            # print("What happened?")
-            dashcam = {
-                # 'name':data['cid'],
-                # 'date':data['utc_valid'],
-                'hovertext': "Not labeled yet",
-                'LABEL': "Not labeled yet",
-                'lon':data['lon'],    
-                'lat':data['lat'],
-                'PHOTO_URL':data['imgurl'],
-                "RSI": 0.4, #BUG
-                'label':"AVL-"+"Not labeled yet",
-                'customdata':{'url':data['imgurl'],'preds':None},
-            }
-        else:
-            # print("You got this!")
-            # print(result_dict)
-            res = result_dict[data['imgurl']]
-            # print(res)
-            # print(data['imgurl'])
-            inp = getLabel(res)
-            pred = {
-                'prob_Bare': res[0],
-                'prob_Partly Snow Coverage': res[1],
-                'prob_Undefined': res[2],
-                'prob_Full Snow Coverage': res[3]
-            }
-            dashcam = {
-                # 'name':data['cid'],
-                # 'date':data['utc_valid'],
-                'hovertext': inp,
-                'LABEL': inp,
-                'lon':data['lon'],    
-                'lat':data['lat'],
-                'PHOTO_URL':data['imgurl'],
-                'prob_Bare': res[0],
-                'prob_Partly Snow Coverage': res[1],
-                'prob_Undefined': res[2],
-                'prob_Full Snow Coverage': res[3],
-                'customdata': {'url':data['imgurl'],'preds':pred},
-                'label':"AVL-"+inp,
-                "RSI": 0.4 #BUG
-            }
-        dashcams.append(dashcam)
-    return dashcams
-
-import pandas as pd
-rwis_disksave_bulk = BulkTable(db,"RWIS_PRED",key="IMAGE_URL",value=["Snow_Estimate_Ratio","SRC_MASK"],high_load=True)
-
-def checkrwiscache(results, filter=True):
-    """ 
-    Modification of checkcache to work with RWIS API
-    # TODO: Modify dashcam keys/columns to the same format seen in callbacks.py: line 222, 228-238
-    # IDOT-072: should be undefined case
-    """
-    rwis_stations = pd.read_csv('0_RWIS_GPS_data_mod.csv')
-
-    dashcams = []
-    # TODO: -v uncomment this for caching implementation
-    # url = ("http://127.0.0.1:8080/snow_estimate")
-    # data = {"img_urls": img_urls}
-    # r = requests.post(url, json=data)
-    # result_dict = (r.json())['result']
-
-    filtered_data = []
-    img_urls = []
-
-    for i, data in tqdm(enumerate(results['data'])):
-
-        rwis_row = rwis_stations[rwis_stations['cid'] == data['cid']].values
-        if len(rwis_row) == 0:
-            continue
-        rwis_row = rwis_row[0]
-
-        if filter:
-            point = Point(rwis_row[1],rwis_row[0])  
-            distances = (shapely.distance(point,both_highways.geometry) < 0.002)
-            if (distances[0] or distances[1]) == False:
-                continue
-        filtered_data.append(data)
-    
-        for key in data.keys():
-            if key.startswith('imgurl'):
-                if data[key] is not None:
-                    imgurl = data[key]
-                    break
-        img_urls.append(imgurl)
-
-    data1 = {"img_urls": img_urls}
-    db_vals = rwis_disksave_bulk[img_urls]
-    result_dict = {}
-    for img_url in img_urls:
-        if img_url in db_vals:
-            out = db_vals[img_url]
-            result_dict[img_url] = [out[0],out[1].decode()]
-        else:
-            result_dict[img_url] = None
-    # r = requests.post(url, json=data1) 
-    # result_dict = (r.json())['result']
-    # estimate_ratios = result_dicte['estimate_ratio']
-    # img_gen_masks = result_dicte['img_gen_masks']
-    # img_src_masks = result_dicte['img_src_masks']
-    # print(estimate_ratios)
-    image_placeholder = "https://mesonet.agron.iastate.edu/archive/data/2023/05/25/camera/idot_trucks/A34681/A34681_202123305251928.jpg"
-    for i, data in tqdm(enumerate(filtered_data)):
-        rwis_row = rwis_stations[rwis_stations['cid'] == data['cid']].values
-        if len(rwis_row) == 0:
-            continue
-        rwis_row = rwis_row[0]
-
-        # TODO: conversion of estimate ratio to rsi ranges
-        # bare: 0.8-1.0
-        # part snow: 0.5-0.8
-        # full: 0.2-0.5
-        
-        if result_dict[img_urls[i]]==None:
-            
-            category = "Waiting..."
-            estimate_ratio = 0
-            dashcam = {
-                'stid': data['cid'],
-                'lon':rwis_row[1],    
-                'lat':rwis_row[0],
-                'customdata':{'url':img_urls[i], 'preds':[image_placeholder, image_placeholder]}, #img_urls
-                'RSC': category, # Predicted category
-                "RSI": estimate_ratio, #BUG
-                'label':"RWIS-"+category,
-                "hovertext": data['cid'] + "<br>" + str(estimate_ratio) 
-            }
-            dashcams.append(dashcam)
-            continue
-            
-        estimate_ratio = result_dict[img_urls[i]][0]
-        if estimate_ratio >= 0.8:
-            category = 'Bare'
-        elif estimate_ratio >= 0.5:
-            category = 'Partly Snow Coverage'
-        else:
-            category = 'Full Snow Coverage'
-
-        # TODO: add option to see generated mask
-        # interpret image from binary data
-        # optimize rwis ml function
-
-        dashcam = {
-            'stid': data['cid'],
-            'lon':rwis_row[1],    
-            'lat':rwis_row[0],
-            'customdata':{'url':img_urls[i], 'preds':[result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]]}, #img_urls
-            'RSC': category, # Predicted category
-            "RSI": estimate_ratio, #BUG
-            'label':"RWIS-"+category,
-            "hovertext": data['cid'] + "<br>" + str(estimate_ratio) 
-        }
-        dashcams.append(dashcam)
-    return dashcams
-
-
-def grab_RWIS_data(todo):
-    rwis_stations = pd.read_csv('0_RWIS_GPS_data_mod.csv')
-
-    dashcams = []
-    # TODO: -v uncomment this for caching implementation
-    # url = ("http://127.0.0.1:8080/snow_estimate")
-    url = (f"{SERVER_IP}/snow_estimate")
-    # data = {"img_urls": img_urls}
-    # r = requests.post(url, json=data)
-    # result_dict = (r.json())['result']
-
-    filtered_data = []
-    img_urls = []
-    # url = ("http://127.0.0.1:8080/predictBatchesV2")
-    # print(results['data'])
-    # print("IMG URLS",img_urls)
-    # BATCH_SIZE = 20
-    # for i in tqdm(range(0,len(results))):
-    #     img_urls = [x['imgurl'] for x in results['data'][i:i+BATCH_SIZE]]
-    #     # print(img_urls)
-    img_urls = []
-    for x in todo:
-        # print(x)
-        img_urls.append(x['imgurl'])
-
-    data1 = {"img_urls": img_urls}
-
-    r = requests.post(url, json=data1) 
-    result_dict = (r.json())['result']
-    # print(result_dict)
-    # estimate_ratios = result_dicte['estimate_ratio']
-    # img_gen_masks = result_dicte['img_gen_masks']
-    # img_src_masks = result_dicte['img_src_masks']
-    # print(estimate_ratios)
-    # image_placeholder = "https://mesonet.agron.iastate.edu/archive/data/2023/05/25/camera/idot_trucks/A34681/A34681_202123305251928.jpg"
-    for i, data in tqdm(enumerate(todo)):
-        rwis_row = rwis_stations[rwis_stations['cid'] == data['cid']].values
-        if len(rwis_row) == 0:
-            continue
-        rwis_row = rwis_row[0]
-
-        # TODO: conversion of estimate ratio to rsi ranges
-        # bare: 0.8-1.0
-        # part snow: 0.5-0.8
-        # full: 0.2-0.5
-        estimate_ratio = result_dict[img_urls[i]][0]
-        if estimate_ratio >= 0.8:
-            category = 'Bare'
-        elif estimate_ratio >= 0.5:
-            category = 'Partly Snow Coverage'
-        else:
-            category = 'Full Snow Coverage'
-
-        # TODO: add option to see generated mask
-        # interpret image from binary data
-        # optimize rwis ml function
-
-        dashcam = {
-            'stid': data['cid'],
-            'lon':rwis_row[1],    
-            'lat':rwis_row[0],
-            'customdata':{'url':img_urls[i], 'preds':[result_dict[img_urls[i]][1], result_dict[img_urls[i]][1]]}, #img_urls
-            'RSC': category, # Predicted category
-            'label':"RWIS-"+category,
-            "RSI": estimate_ratio, #BUG
-            "hovertext": data['cid'] + "<br>" + str(estimate_ratio),
-            "old_label":data['cid'] + "<br>" + str(0),
-        }
-        dashcams.append(dashcam)
-    return dashcams
-
-def grab_avl_data(results):
-    """
-    Processes JSON to grab AVL specific data
-    Output: [{Name, Date, Lat, Long, Camera Url},...]
-    """
-    dashcams = []
-    result_dict = {}
-
-
-    url = (f"{SERVER_IP}/predictBatches")
-    BATCH_SIZE = 20
-    for i in tqdm(range(0,len(results['data']),BATCH_SIZE)):
-        img_urls = [x['imgurl'] for x in results['data'][i:i+BATCH_SIZE]]
-        # print(img_urls)
-        data = {"img_urls": img_urls}
-        r = requests.post(url, json=data)
-        result = (r.json())['result']
-        # print(result)
-        result_dict.update(result)
-
-    for data in tqdm(results['data']):
-        
-        # inp = random.choice(['Full Snow Coverage','Partly Snow Coverage','Bare'])
-        # res = requests.get(AVL_RULE+data['imgurl']).json()["result"]
-        res = result_dict[data['imgurl']]
-
+        # print("You got this!")
+        # print(result_dict)
+        res = [data["Bare"], data['Partly'], data['Undefined'], data['Full']]
         inp = getLabel(res)
-
         pred = {
-            'prob_Bare': res[0],
-            'prob_Partly Snow Coverage': res[1],
-            'prob_Undefined': res[2],
-            'prob_Full Snow Coverage': res[3]
+            'prob_Bare': data['Bare'],
+            'prob_Partly Snow Coverage': data['Partly'],
+            'prob_Undefined': data['Undefined'],
+            'prob_Full Snow Coverage': data['Full']
         }
         dashcam = {
             # 'name':data['cid'],
             # 'date':data['utc_valid'],
             'hovertext': inp,
             'LABEL': inp,
-            'lon':data['lon'],    
-            'lat':data['lat'],
+            'lon':long,    
+            'lat':lat,
             'PHOTO_URL':data['imgurl'],
             'prob_Bare': res[0],
             'prob_Partly Snow Coverage': res[1],
@@ -365,9 +115,51 @@ def grab_avl_data(results):
             "RSI": 0.4 #BUG
         }
         dashcams.append(dashcam)
-
     return dashcams
 
+
+import pandas as pd
+rwis_disksave_bulk = BulkTable(db,"RWIS_PRED",key="IMAGE_URL",value=["Snow_Estimate_Ratio","SRC_MASK"],high_load=True)
+
+rwis_stations = pd.read_csv('0_RWIS_GPS_data_mod.csv')
+d = rwis_stations.to_dict('records')
+stations = {}
+for x in d:
+    stations[x['cid']] = [x['Latitude'],x['Longitude (-W)']]
+
+def checkrwiscache(results, filter=True):
+    """ 
+    Modification of checkcache to work with RWIS API
+    """
+    rwiscams = []
+    img_urls = []
+    print(list(results))
+    for doc in tqdm(results):
+        # TODO: conversion of estimate ratio to rsi ranges
+        # bare: 0.8-1.0
+        # part snow: 0.5-0.8
+        # full: 0.2-0.5
+        data = doc.to_dict()
+        estimate_ratio = data['Snow_estimate_Ratio']
+        if estimate_ratio >= 0.8:
+            category = 'Bare'
+        elif estimate_ratio >= 0.5:
+            category = 'Partly Snow Coverage'
+        else:
+            category = 'Full Snow Coverage'
+
+        rwiscam = {
+            'stid': data['Station_ID'],
+            'lon':stations[data['Station_ID']][1],    
+            'lat':stations[data['Station_ID']][0],
+            'customdata':{'url':data['image_url'], 'preds':[data['SRC_MASK'], data['SRC_MASK']]}, # preds = output masks (2)
+            'RSC': category, # Predicted category
+            "RSI": estimate_ratio, #BUG
+            'label':"RWIS-"+category,
+            "hovertext": data['Station_ID'] + "<br>" + str(estimate_ratio) 
+        }
+        rwiscams.append(rwiscam)
+    return rwiscams
 
 def grab_avl_data_v2(todo):
     """
@@ -467,18 +259,3 @@ def getPredictForOneImage(img_url):
     #     'prob_Full Snow Coverage': res[3],
     # }
     return dashcam
-
-def convert_UTC():
-    pass
-
-def main():
-    window_size = '100'
-    today = date.today().strftime("%Y/%m/%d/") # TODO: Input user defined UTC Timestamp
-    # convert_UTC()
-    
-    results = get_cameras(window_size)
-    print(grab_avl_data(results))
-
-
-if __name__ == '__main__':
-    main()
