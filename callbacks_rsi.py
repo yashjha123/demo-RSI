@@ -54,6 +54,8 @@ defined_labels = ['Full Snow Coverage',
     [Input('avl_points', 'data'),],)
 def initial_semi(avl_points): # NOTE: This reconstructs semi whenever new data is loaded
     avl_df = pd.DataFrame.from_dict(avl_points)
+    if len(avl_df) <= 1:
+        raise dash.exceptions.PreventUpdate
     print(avl_points)
     print(avl_df)
     criterion = lambda row: row['label'] in defined_labels
@@ -62,6 +64,8 @@ def initial_semi(avl_points): # NOTE: This reconstructs semi whenever new data i
     avl_df = avl_df[mask]
 
     print("AVL_DF",avl_df)
+    
+
     # updated_df = crop_cal_perc_white_black.ObtainAdjustedRSI(df=df)
     nugget, rnge, sill, maxlag, n_lags, dists, experiments = utils.ConstructSemi(df=avl_df)
     return ('Spherical',nugget,rnge,sill,maxlag,n_lags,dists,experiments)
@@ -137,7 +141,9 @@ def update_rsi_map(n_clicks, avl_points, semi_model, semi_nugget, semi_range, se
     # TODO: PLACEHOLDER VALUES FOR NOW
     df_rwis = pd.read_csv("https://raw.githubusercontent.com/WMJason/demo-RSI/main/RWIS_locs.csv") # ask whats going on here...
     
-    df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv') # unknown RWIS data (location, time, for interpolation)
+    # df_unknown = pd.read_csv('https://raw.githubusercontent.com/WMJason/demo-RSI/main/test_unknown.csv') # unknown RWIS data (location, time, for interpolation)
+    df_unknown = pd.read_csv('points_at_500m_intervals.csv') # unknown RWIS data (location, time, for interpolation)
+    
     avl_points = pd.DataFrame.from_dict(avl_points)
     avl_df = pd.DataFrame.from_dict(avl_points)
 

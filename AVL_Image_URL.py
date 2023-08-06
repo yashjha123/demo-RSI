@@ -71,6 +71,7 @@ def get_cameras(windowsize, date):
     """
     Grabs AVL data within windowsize
     """
+    print("NEW DATE",date)
     startdate = date - datetime.timedelta(minutes=windowsize)
     enddate = date + datetime.timedelta(minutes=windowsize)
     query = firebase_db.collection_group("Images").where(filter=FieldFilter("Date", ">=", startdate)).where(filter=FieldFilter("Date", "<=", enddate)).stream()
@@ -84,17 +85,17 @@ def getLabel(result):
 def checkcache(results, filter = True):
     global both_highways
     dashcams = []
-
+    print("avl_results",results)
     for doc in results:
         print((f"{doc.id} => {doc.to_dict()}"))
         data = doc.to_dict()
         data["imgurl"] = data["IMAGE_URL"]
         long, lat = data["Position"].longitude, data["Position"].latitude
-        if filter:
-            point = Point(long,lat)
-            distances = (shapely.distance(point,both_highways.geometry) < 0.002)
-            if (distances[0] or distances[1]) == False:
-                continue
+        # if filter:
+        #     point = Point(long,lat)
+        #     distances = (shapely.distance(point,both_highways.geometry) < 0.002)
+        #     if (distances[0] or distances[1]) == False:
+        #         continue
 
         # print("You got this!")
         # print(result_dict)

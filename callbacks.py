@@ -77,7 +77,7 @@ rsc_labels = ['Full Snow Coverage',
 #         return data
 
 
-@app.callback(Output("page-content", "children"),
+@app.callback([Output("menu-col-1", "children"),Output("menu-col-2","children")],
               [Input("url", "pathname")])
 def display_page(pathname):
     print(pathname)
@@ -86,6 +86,7 @@ def display_page(pathname):
     elif pathname == '/rsi':
         return rsi_page.HomePage()
     elif pathname == '/spatial_mapping':
+        # TODO: Fix UI 
         return html.Div(children=[html.Iframe(src="assets/2018-11-25_I35S_10 a.m..html",
                 style={"height": "800px", "width": "90%",
                        'display': 'block', 'margin-left': 'auto',
@@ -250,7 +251,6 @@ def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
     [Output('cache', 'data'),
      Output('process_in_background','data')],
     [Input('slider', 'value'),Input('pick_date_time', 'value')],
-    prevent_initial_call=True
 )
 def load_map(window, pick_date_time):
     global rsc_colors
@@ -325,8 +325,8 @@ def load_map(window, pick_date_time):
 
 clientside_callback(
     """
-    async function(new_points,prev_fig,avl_points) {
-        
+    async function(new_points,old_fig,avl_points) {
+        let prev_fig = structuredClone(old_fig);
         console.log("AVL",avl_points)
         console.log(prev_fig)
         console.log(new_points)
@@ -390,10 +390,10 @@ clientside_callback(
         })
         console.log("changed prev_fig",prev_fig)
         console.log("avl_points",avl_points)
-        return ({...prev_fig},avl_points);
+        return [prev_fig,avl_points];
     }
     """,
-    [Output("AVL_map","figure"),Output('avl_points','data',allow_duplicate=True)],
+    [Output("AVL_map","figure",allow_duplicate=True),Output('avl_points','data',allow_duplicate=True)],
     Input('cache', 'data'),
     [State("AVL_map","figure"),State('avl_points','data')],
     prevent_initial_call=True
@@ -511,61 +511,28 @@ def display_dl_prediction(clickData):
             if 'SnowPlow' in img_url or 'idot_trucks' in img_url:
                 print("EE")
 
-                try:
-                    # try:
-                    if the_link['preds'] == None:
-                        print("WE AREN'T LABELLED YET")
-                        values = []
-                        labels = rsc_labels
-                        classes = getPredictForOneImage(img_url)
-                        # print(classes)
-                        for label in labels:
-                            values.append(
-                                round(classes['prob_' + label], 3))
-                        colors = list(rsc_colors.values())
-
-                        fig = go.Figure(data=[
-                            go.Pie(labels=labels, values=values, hole=.4, marker={'colors': colors}, )])
-                        # to_return = [
-                        #     dbc.CardBody(
-                        #         html.Center(
-                        #             dbc.Spinner(spinner_style={"width": "5rem", "height": "5rem"},color="light")
-                        #         )
-                        #     )
-                        # ]
-                        fig.update_layout(
-                            height=300,
-                            showlegend=True,
-                            margin=dict(t=10, b=0, l=10, r=0),
-                            paper_bgcolor="#303030",
-                            plot_bgcolor="#303030",
-                            font_color="white",
-                        )
-                        
-                        # print(classes)
-                        to_return = [
-                            dbc.CardBody(
-                                dcc.Graph(
-                                    id="pie_chart",
-                                    figure=fig,
-                                    config={'displayModeBar': False},
-                                ),
-                            )
-                        ]
-                        return to_return, classes        
-                    labels = rsc_labels
+                # try:
+                # try:
+                if the_link['preds'] is None:
+                    print("WE AREN'T LABELLED YET")
                     values = []
+                    labels = rsc_labels
+                    classes = getPredictForOneImage(img_url)
+                    # print(classes)
                     for label in labels:
                         values.append(
-                            round(the_link['preds']['prob_' + label], 3))
+                            round(classes['prob_' + label], 3))
                     colors = list(rsc_colors.values())
+
                     fig = go.Figure(data=[
                         go.Pie(labels=labels, values=values, hole=.4, marker={'colors': colors}, )])
-                    # fig.update_layout(legend=dict(
-                    #     orientation="h",
-                    # ))
-                    
-                    
+                    # to_return = [
+                    #     dbc.CardBody(
+                    #         html.Center(
+                    #             dbc.Spinner(spinner_style={"width": "5rem", "height": "5rem"},color="light")
+                    #         )
+                    #     )
+                    # ]
                     fig.update_layout(
                         height=300,
                         showlegend=True,
@@ -575,6 +542,7 @@ def display_dl_prediction(clickData):
                         font_color="white",
                     )
                     
+                    # print(classes)
                     to_return = [
                         dbc.CardBody(
                             dcc.Graph(
@@ -584,34 +552,66 @@ def display_dl_prediction(clickData):
                             ),
                         )
                     ]
-                except Exception as e:
-                    print(e)
-                    labels = ['Please click a dot.']
-                    values = [1.0]
-                    colors = ['grey']
-                    fig = go.Figure(data=[go.Pie(labels=labels, values=values, marker={'colors': colors}, textinfo='label', )])
-                    fig.update_layout(
-                        height=300,
-                        showlegend=False,
-                        margin=dict(t=10, b=0, l=10, r=0),
-                        uniformtext={
-                            "mode": "hide",
-                            "minsize": 25,
-                        },
-                        paper_bgcolor="#303030",
-                        plot_bgcolor="#303030",
-                        font_color="white"
-                    )
+                    return to_return, classes        
+                labels = defined_labels
+                values = []
+                for label in labels:
+                    values.append(
+                        round(the_link['preds']['prob_' + label], 3))
+                colors = list(rsc_colors.values())
+                fig = go.Figure(data=[
+                    go.Pie(labels=labels, values=values, hole=.4, marker={'colors': colors}, )])
+                # fig.update_layout(legend=dict(
+                #     orientation="h",
+                # ))
                 
-                    to_return = [
-                        dbc.CardBody(
-                            dcc.Graph(
-                                id="pie_chart",
-                                figure=fig,
-                                config={'displayModeBar': False},
-                            ),
-                        )
-                    ]
+                
+                fig.update_layout(
+                    height=300,
+                    showlegend=True,
+                    margin=dict(t=10, b=0, l=10, r=0),
+                    paper_bgcolor="#303030",
+                    plot_bgcolor="#303030",
+                    font_color="white",
+                )
+                
+                to_return = [
+                    dbc.CardBody(
+                        dcc.Graph(
+                            id="pie_chart",
+                            figure=fig,
+                            config={'displayModeBar': False},
+                        ),
+                    )
+                ]
+                # except Exception as e:
+                #     print(e)
+                #     labels = ['Please click a dot.']
+                #     values = [1.0]
+                #     colors = ['grey']
+                #     fig = go.Figure(data=[go.Pie(labels=labels, values=values, marker={'colors': colors}, textinfo='label', )])
+                #     fig.update_layout(
+                #         height=300,
+                #         showlegend=False,
+                #         margin=dict(t=10, b=0, l=10, r=0),
+                #         uniformtext={
+                #             "mode": "hide",
+                #             "minsize": 25,
+                #         },
+                #         paper_bgcolor="#303030",
+                #         plot_bgcolor="#303030",
+                #         font_color="white"
+                #     )
+                
+                #     to_return = [
+                #         dbc.CardBody(
+                #             dcc.Graph(
+                #                 id="pie_chart",
+                #                 figure=fig,
+                #                 config={'displayModeBar': False},
+                #             ),
+                #         )
+                #     ]
                 return to_return, False
             else:
                 preds = clickData['points'][0]['customdata']['preds']
