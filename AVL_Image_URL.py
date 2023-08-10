@@ -15,7 +15,7 @@ from multiprocessing import Pool, freeze_support
 from tqdm import tqdm
 
 
-
+from check_for_archivev2 import isArchived, merge_archive_and_new
 firebase_db = firestore.Client(project="demorsi-a1501")
 
 
@@ -67,6 +67,7 @@ def get_rwis_cameras(windowsize, date):
 # datee = datetime.datetime(year=2022, month=12, day=29, hour=12, minute=30)
 # print(get_rwis_cameras(1,datee))
 
+
 def get_cameras(windowsize, date):
     """
     Grabs AVL data within windowsize
@@ -74,8 +75,13 @@ def get_cameras(windowsize, date):
     print("NEW DATE",date)
     startdate = date - datetime.timedelta(minutes=windowsize)
     enddate = date + datetime.timedelta(minutes=windowsize)
-    query = firebase_db.collection_group("Images").where(filter=FieldFilter("Date", ">=", startdate)).where(filter=FieldFilter("Date", "<=", enddate)).stream()
-    return query
+
+    archived = isArchived(startdate,enddate)
+    if archived:
+        docs = firebase_db.collection_group("Images").where(filter=FieldFilter("Date", ">=", startdate)).where(filter=FieldFilter("Date", "<=", enddate)).stream()
+    else:
+        docs = merge_archive_and_new(date,windowsize)
+    return docs
 
 
 def getLabel(result):
@@ -87,26 +93,35 @@ def checkcache(results, filter = True):
     dashcams = []
     print("avl_results",results)
     for doc in results:
-        print((f"{doc.id} => {doc.to_dict()}"))
-        data = doc.to_dict()
+
+        if type(doc) != dict:
+            data = doc.to_dict()
+        else:
+            data = doc
+        print(data)
+        
         data["imgurl"] = data["IMAGE_URL"]
         long, lat = data["Position"].longitude, data["Position"].latitude
         # if filter:
-        #     point = Point(long,lat)
-        #     distances = (shapely.distance(point,both_highways.geometry) < 0.002)
-        #     if (distances[0] or distances[1]) == False:
-        #         continue
+            # point = Point(long,lat)
+            # distances = (shapely.distance(point,both_highways.geometry) < 0.002)
+            # if (distances[0] or distances[1]) == False:
+            #     continue
 
         # print("You got this!")
         # print(result_dict)
-        res = [data["Bare"], data['Partly'], data['Undefined'], data['Full']]
-        inp = getLabel(res)
-        pred = {
-            'prob_Bare': data['Bare'],
-            'prob_Partly Snow Coverage': data['Partly'],
-            'prob_Undefined': data['Undefined'],
-            'prob_Full Snow Coverage': data['Full']
-        }
+        if data.get('archive',True):
+            res = [data["Bare"], data['Partly'], data['Undefined'], data['Full']]
+            inp = getLabel(res)
+            pred = {
+                'prob_Bare': data['Bare'],
+                'prob_Partly Snow Coverage': data['Partly'],
+                'prob_Undefined': data['Undefined'],
+                'prob_Full Snow Coverage': data['Full']
+            }
+        else:
+            inp = 'Not labeled yet'
+            pred = None
         dashcam = {
             # 'name':data['cid'],
             # 'date':data['utc_valid'],
@@ -114,11 +129,8 @@ def checkcache(results, filter = True):
             'LABEL': inp,
             'lon':long,    
             'lat':lat,
+            'date': data['Date'],
             'PHOTO_URL':data['imgurl'],
-            'prob_Bare': res[0],
-            'prob_Partly Snow Coverage': res[1],
-            'prob_Undefined': res[2],
-            'prob_Full Snow Coverage': res[3],
             'customdata': {'url':data['imgurl'],'preds':pred},
             'label':"AVL-"+inp,
             "RSI": getRSI(inp)
@@ -169,44 +181,36 @@ def checkrwiscache(results, filter=True):
         rwiscams.append(rwiscam)
     return rwiscams
 
-def grab_avl_data_v2(todo):
+import ast
+
+API_URL = 'https://us-central1-demorsi-a1501.cloudfunctions.net/demo_api'
+def make_avl_predictions(todo):
     """
     Processes JSON to grab AVL specific data
     Output: [{Name, Date, Lat, Long, Camera Url},...]
     """
     dashcams = []
-    result_dict = {}
 
+    outputs = []
+    for point in todo:
+        print(point)
+        img_url = point["imgurl"]
+        location = [point["lat"], point["lon"]]
 
-    url = (f"{SERVER_IP}/predictBatchesV2")
-    # print(results['data'])
-    # print("IMG URLS",img_urls)
-    # BATCH_SIZE = 20
-    # for i in tqdm(range(0,len(results))):
-    #     img_urls = [x['imgurl'] for x in results['data'][i:i+BATCH_SIZE]]
-    #     # print(img_urls)
-    img_urls = []
-    for x in todo:
-        # print(x)
-        img_urls.append(x['imgurl'])
-    data = {"img_urls": img_urls}
-    print(len(img_urls))
-    r = requests.post(url, json=data)
-    result = (r.json())['result']
-    # return (result)
-    print(len(result.keys()))
-    # result_dict.update(result)
-    i = 0
-    for img_url in tqdm(result.keys()):
+        outputs.append({
+            "position":location,
+            "image_url":img_url,
+            "date":point["date"].strftime("%Y-%m-%dT%H:%M")
+        })
         
-    #     # inp = random.choice(['Full Snow Coverage','Partly Snow Coverage','Bare'])
-    #     # res = requests.get(AVL_RULE+data['imgurl']).json()["result"]
-        res = result[img_url]
-        if type(res) == str:
-            res = [0,0,0,0]
-            inp = "Failed"
-        else:
-            inp = getLabel(res)
+    res = requests.post(API_URL, json={"input": outputs})
+    return_json = ast.literal_eval(res.text)
+
+    for point in tqdm(return_json.values()):
+
+        res = point['pred']
+        
+        inp = getLabel(res)
         pred = {
             'prob_Bare': res[0],
             'prob_Partly Snow Coverage': res[1],
@@ -218,19 +222,14 @@ def grab_avl_data_v2(todo):
             # 'date':data['utc_valid'],
             'hovertext': inp,
             'LABEL': inp,
-            'lon':todo[i]['lon'],    
-            'lat':todo[i]['lat'],
-            'PHOTO_URL':todo[i]['imgurl'],
-            'prob_Bare': res[0],
-            'prob_Partly Snow Coverage': res[1],
-            'prob_Undefined': res[2],
-            'prob_Full Snow Coverage': res[3],
+            'lon':point['position'][1],
+            'lat':point['position'][0],
+            'PHOTO_URL':point['image_url'],
             'customdata': {'url':img_url,'preds':pred,"type":"AVL"},
             'label':"AVL-"+inp,
             "RSI": getRSI(inp) #BUG
         }
         dashcams.append(dashcam)
-        i+=1
 
     return dashcams
 

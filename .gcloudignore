@@ -1,0 +1,9 @@
+firebase_queries/
+some_path/
+
+__pycache__/
+
+file_system_backend/
+file_system_store/
+cache456/
+vertex_ai/

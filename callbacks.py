@@ -30,7 +30,7 @@ import rsi_page
 from rsi_page import *
 import crop_cal_perc_white_black
 from crop_cal_perc_white_black import *
-from AVL_Image_URL import getPredictForOneImage, grab_avl_data_v2
+from AVL_Image_URL import getPredictForOneImage, make_avl_predictions
 from dash_extensions.enrich import Input, Output, State, Serverside
 
 
@@ -164,22 +164,24 @@ def run_calculation(set_progress,todo):
             rwis_todo.append(elem)
     BATCH_SIZE = 128
     progress = 0
-    for i in range(0,len(rwis_todo),BATCH_SIZE):
-        more = rwis_todo[i:i+BATCH_SIZE]
-        progress+=len(more)
-        new_plots = grab_RWIS_data(more)
-        set_progress((new_plots,))
-        # print(new_plots)
-        time.sleep(3)
+    # for i in range(0,len(rwis_todo),BATCH_SIZE):
+    #     more = rwis_todo[i:i+BATCH_SIZE]
+    #     progress+=len(more)
+    #     new_plots = grab_RWIS_data(more)
+    #     set_progress((new_plots,))
+    #     # print(new_plots)
+    #     time.sleep(3)
     for i in range(0,len(avl_todo),BATCH_SIZE):
         progress += len(avl_todo[i:i+BATCH_SIZE])
-        new_plots = grab_avl_data_v2(avl_todo[i:i+BATCH_SIZE])
-        
-        set_progress((new_plots,))
-        time.sleep(3)
+        new_plots = make_avl_predictions(avl_todo[i:i+BATCH_SIZE])
+        print(new_plots)
+        set_progress({
+            'overwrite':False,
+            'data':new_plots})
+        # time.sleep(3)
         
     
-#     return "Done"
+    return "Done"
 
 
 def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
@@ -242,7 +244,71 @@ def get_avl_and_rwis_locations(df, df_rwis, df_rwis_all):
         avl_points = pd.DataFrame(columns=['RSI','lon','lat','pro_X','pro_Y','customdata','label'])
 
     return avl_points, locations
+rsc_colors = {
+    "Full Snow Coverage": "white",
+    "Partly Snow Coverage": "grey",
+    "Bare": "black",
+    "Undefined": "#FDDD0D",
+    "Not labeled yet": "green",
+    "Waiting...": "green",
+    "Failed": "red",
+}
 
+# center_lat = 41.3322983
+# center_lon = -93.7797012
+# rwis_locations = [
+#     go.Scattermapbox(
+#         lon=[],
+#         lat=[],
+#         mode="markers",
+#         marker={
+#             "color": rsc_colors[rsc_type],
+#             "size": 20,
+#             "opacity": 0.8,
+#         },
+#         showlegend=True,
+#         hoverinfo="text",
+#         hovertext=[],
+#         customdata=[],
+#         name="RWIS-" + rsc_type,  # iloc grabs element at first index
+#     )
+#     for rsc_type in rsc_colors.keys()
+# ]
+# avl_locations = [
+#     go.Scattermapbox(
+#         lon=[],
+#         lat=[],
+#         mode="markers",
+#         marker={
+#             "color": rsc_colors[rsc_type],
+#             "size": 10,
+#             "opacity": 1.0,
+#         },
+#         showlegend=True,
+#         hoverinfo="text",
+#         hovertext=[],
+#         customdata=[],
+#         name="AVL-" + rsc_type,  # iloc grabs element at first index
+#     )
+#     for rsc_type in rsc_colors.keys()
+# ]
+# locations_placeholder = rwis_locations + avl_locations
+# map_layout = go.Layout(
+#     mapbox=go.layout.Mapbox(
+#         accesstoken=mapbox_access_token,
+#         center=go.layout.mapbox.Center(lat=center_lat, lon=center_lon),
+#         style="dark",
+#         zoom=8,
+#         pitch=0,
+#     ),
+#     height=740,
+#     margin=dict(l=15, r=15, t=15, b=15),
+#     paper_bgcolor="#303030",
+#     font_color="white",
+#     uirevision=True,
+# )
+
+# from index_page import map_layout, locations_placeholder NOT WORKING FOR SOME REASON?
 #callback for the AVL points map
 #to determine the file
 # TODO: update for toggleable filter button
@@ -314,19 +380,27 @@ def load_map(window, pick_date_time):
     #     avl_points.append({'type':'avl','lon':plt['lon'],'lat':plt['lat'],'imgurl':plt})
     for plt in avl_plots:
         if plt["hovertext"] == "Not labeled yet":
-            todo.append({'type':"avl",'lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['PHOTO_URL']})
+            todo.append({'type':"avl",'lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['PHOTO_URL'],'date':plt['date']})
         
     for plt in rwis_plots:
         if plt["RSC"] == "Waiting...":
             todo.append({'type':'rwis','cid':plt['stid'],'lon':plt['lon'],'lat':plt['lat'],'imgurl':plt['customdata']['url']})
     # print("Figure looks like",figure)
-    return [rwis_plots+avl_plots,Serverside(todo)]
+    return [{'data':rwis_plots+avl_plots,'overwrite':True},Serverside(todo)]
 
 
 clientside_callback(
     """
-    async function(new_points,old_fig,avl_points) {
+    async function(cache,old_fig,avl_points,locations_placeholder,avl_blank) {
+        console.log("cache",cache);
+    
+        new_points = cache['data'];
         let prev_fig = structuredClone(old_fig);
+
+        if(cache['overwrite']){
+            prev_fig['data'] = structuredClone(locations_placeholder);
+            avl_points = structuredClone(avl_blank);
+        }
         console.log("AVL",avl_points)
         console.log(prev_fig)
         console.log(new_points)
@@ -395,7 +469,7 @@ clientside_callback(
     """,
     [Output("AVL_map","figure",allow_duplicate=True),Output('avl_points','data',allow_duplicate=True)],
     Input('cache', 'data'),
-    [State("AVL_map","figure"),State('avl_points','data')],
+    [State("AVL_map","figure"),State('avl_points','data'),State('locations_placeholder','data'),State('avl_blank','data')],
     prevent_initial_call=True
 )
 # @app.callback([Output("AVL_map","figure",allow_duplicate=True)],[Input("cache","data")],prevent_initial_call=True,)
@@ -418,7 +492,7 @@ def display_click_data(clickData):
             if type(the_link) == str:
                 return html.Img(
                     src=the_link['url'],
-                    style={'max-height': '90%', 'max-width': '90%',
+                 style={'max-height': '90%', 'max-width': '90%',
                            'display': 'block', 'margin-left': 'auto',
                            'margin-right': 'auto',})
             else:

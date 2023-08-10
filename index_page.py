@@ -80,21 +80,10 @@ rwis_locations = [
     )
     for rsc_type in rsc_colors.keys()
 ]
-# avl_locations = [go.Scattermapbox(
-#         lon=[],
-#         lat=[],
-#         mode='markers',
-#         marker={'color': rsc_colors[rsc_type], 'size': 10, 'opacity': 1.0,},
-#         showlegend=True,
-#         hoverinfo='text',
-#         hovertext= [],
-#         customdata=[],
-#         name='AVL-'+rsc_type, # iloc grabs element at first index
-#     ) for rsc_type in rsc_colors.keys()]
 avl_locations = [
     go.Scattermapbox(
-        lon=[-91.099],
-        lat=[40.813],
+        lon=[],
+        lat=[],
         mode="markers",
         marker={
             "color": rsc_colors[rsc_type],
@@ -103,8 +92,8 @@ avl_locations = [
         },
         showlegend=True,
         hoverinfo="text",
-        hovertext=["WOAH"],
-        customdata=[{"url": "THERE IS SOMETHING", "preds": [0, 0, 0, 1]}],
+        hovertext=[],
+        customdata=[],
         name="AVL-" + rsc_type,  # iloc grabs element at first index
     )
     for rsc_type in rsc_colors.keys()
@@ -196,9 +185,12 @@ banner = html.Div(
                 dcc.Store(id="experimental"),
                 # TODO: storage_type="session"
                 dcc.Store(id="avl_points", data=avl_blank),
+                dcc.Store(id="avl_blank", data=avl_blank),
                 dcc.Store(id="rwis_points", storage_type="session"),
                 dcc.Store(id="cache", storage_type="session"),
                 dcc.Store(id="process_in_background"),
+
+                dcc.Store(id='locations_placeholder',data=locations_placeholder)
             ],
         ),
     ],
@@ -535,6 +527,6 @@ def HomePage():
 app.layout = PageLayout()
 
 ##----------------------------------------------------------
-if __name__ == "__main__":
-    app.run_server(debug=True, host="0.0.0.0", port=5000, dev_tools_props_check=False)
-# server = app.server
+# if __name__ == "__main__":
+    # app.run_server(debug=True, host="0.0.0.0", port=5000, dev_tools_props_check=False)
+server = app.server

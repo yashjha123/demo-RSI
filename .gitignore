@@ -5,3 +5,12 @@ __pycache__/
 file_system_backend/
 file_system_store/
 cache456/
+vertex_ai/4_retrain_baseline_update_train9.h5
+vertex_ai/4_retrain_baseline_update_train9.h5
+vertex_ai/4_retrain_baseline_update_train9.h5
+vertex_ai/avl_final
+vertex_ai/avl_model_v2
+vertex_ai/avl_v3
+vertex_ai/model_saves
+vertex_ai/avl_from_bytes
+vertex_ai/cloud-run-docker/exporter
